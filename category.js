@@ -22,6 +22,8 @@
   }
   function init(){
     if(!document.getElementById('his-category-style')){const style=document.createElement('style');style.id='his-category-style';style.textContent='.category-filter-wrap{display:flex;align-items:center;gap:8px;background:var(--panel,#fff);border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:0 10px}.category-filter-wrap select{border:0;background:transparent;min-height:42px;outline:0;font:inherit;color:inherit}.category-filter-wrap span{opacity:.6}@media(max-width:760px){.category-filter-wrap{width:100%}.category-filter-wrap select{width:100%}}';document.head.appendChild(style)}
+    const oldRenderAll=window.renderAll;
+    if(typeof oldRenderAll==='function'&&!window.__hisCategoryRenderPatch){window.__hisCategoryRenderPatch=true;window.renderAll=function(){oldRenderAll();refresh()}}
     refresh();
     const form=document.querySelector('#modal-form');
     if(form&&!form.dataset.categoryBound){form.dataset.categoryBound='1';form.addEventListener('change',e=>{if(e.target.name==='category'){if(e.target.value==='__new__'){const name=prompt('Yeni kategori adı:');if(name&&name.trim()){const v=name.trim();save(v);const o=new Option(v,v);e.target.add(o);e.target.value=v}else e.target.value=''}else if(e.target.value)save(e.target.value);refresh()}})}
