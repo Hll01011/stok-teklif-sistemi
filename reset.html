@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>Şifre Yenile • Stok Teklif Sistemi</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#07111f;color:#eef6ff;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.card{width:min(100%,440px);padding:30px;border:1px solid #223957;border-radius:24px;background:#0d1b2d;box-shadow:0 24px 70px #0008}.mark{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:#4de0ad;color:#062018;font-weight:900;font-size:20px;margin-bottom:18px}.eyebrow{color:#4de0ad;font-size:12px;font-weight:800;letter-spacing:.14em}h1{font-size:30px;line-height:1.1;margin:8px 0 10px}p{color:#91a7bd;line-height:1.5}.stack{display:grid;gap:14px;margin-top:22px}label{display:grid;gap:7px;font-size:14px;font-weight:700}input{width:100%;padding:14px 15px;border-radius:13px;border:1px solid #29425f;background:#091626;color:#fff;font-size:16px;outline:none}input:focus{border-color:#4de0ad}button{width:100%;padding:14px 16px;border:0;border-radius:13px;background:#4de0ad;color:#062018;font-size:15px;font-weight:800;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.msg{margin-top:16px;padding:12px 14px;border-radius:12px;font-size:14px;display:none}.msg.show{display:block}.ok{background:#0d3a2d;color:#9cf3d1}.bad{background:#431d25;color:#ffb7c1}.back{display:block;text-align:center;margin-top:16px;color:#91a7bd;text-decoration:none;font-size:14px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark">ST</div>
+    <div class="eyebrow">HIS • STOK & TEKLİF</div>
+    <h1>Yeni şifreni belirle</h1>
+    <p>Hesabın için güçlü bir yeni şifre oluştur. Bu sayfa yalnızca geçerli şifre yenileme bağlantısıyla çalışır.</p>
+    <form id="form" class="stack">
+      <label>Yeni şifre<input id="password" type="password" minlength="8" autocomplete="new-password" required placeholder="En az 8 karakter"></label>
+      <label>Yeni şifre tekrar<input id="confirm" type="password" minlength="8" autocomplete="new-password" required placeholder="Şifreyi tekrar yaz"></label>
+      <button id="submit" type="submit">Şifreyi güncelle</button>
+    </form>
+    <div id="msg" class="msg"></div>
+    <a class="back" href="./">← Giriş ekranına dön</a>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabase=window.supabase.createClient('https://miznxoykfoanazcitmit.supabase.co','sb_publishable_F3fq67Aqp42zaXrhhKFEoQ_1zy1_6xA');
+    const form=document.getElementById('form'), password=document.getElementById('password'), confirm=document.getElementById('confirm'), submit=document.getElementById('submit'), msg=document.getElementById('msg');
+    function show(text,ok=false){msg.textContent=text;msg.className='msg show '+(ok?'ok':'bad')}
+    function checkHash(){const h=new URLSearchParams(location.hash.slice(1));const q=new URLSearchParams(location.search);if(h.get('error_code')||q.get('error_code')){show(decodeURIComponent(h.get('error_description')||q.get('error_description')||'Şifre yenileme bağlantısı geçersiz veya süresi dolmuş.'));return false}return true}
+    checkHash();
+    supabase.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'&&!session)show('Şifre yenileme oturumu oluşturulamadı. Yeni bir bağlantı iste.');});
+    form.addEventListener('submit',async e=>{e.preventDefault();if(password.value!==confirm.value){show('Şifreler aynı değil.');return}if(password.value.length<8){show('Şifre en az 8 karakter olmalı.');return}submit.disabled=true;submit.textContent='Güncelleniyor...';const {error}=await supabase.auth.updateUser({password:password.value});if(error){show(error.message);submit.disabled=false;submit.textContent='Şifreyi güncelle';return}show('Şifren başarıyla güncellendi. Şimdi giriş yapabilirsin.',true);form.reset();setTimeout(()=>location.href='./',1800)});
+  </script>
+</body>
+</html>
