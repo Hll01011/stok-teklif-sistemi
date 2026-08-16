@@ -64,4 +64,5 @@
   window.hisRefreshCategories=load;
   window.hisAddStockCategory=add;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  const pricing=document.createElement('script');pricing.src='pricing.js?v=1';pricing.async=false;document.head.appendChild(pricing);
 })();
