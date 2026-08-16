@@ -33,7 +33,6 @@
     const table=document.querySelector('#page-products table');
     const head=table?.querySelector('thead tr');
     if(!head) return;
-    // app.js'nin kendi Kâr/Fark başlığı varsa onu kaldır.
     head.querySelectorAll('[data-inline-pricing-head]').forEach(x=>x.remove());
     const th=document.createElement('th');
     th.dataset.inlinePricingHead='1';
@@ -85,6 +84,13 @@
     }).join('') || '<tr><td colspan="11" class="muted">Kayıt bulunamadı.</td></tr>';
   }
 
+  // app.js'de Supabase istemcisi "const sb" olarak tanımlı; global window.sb olmak zorunda değil.
+  function getSupabase(){
+    if(typeof sb!=='undefined' && sb) return sb;
+    if(window.sb) return window.sb;
+    return null;
+  }
+
   async function savePrice(id,mode){
     if(typeof state==='undefined') return;
     const p=state.products.find(x=>String(x.id)===String(id));
@@ -97,35 +103,41 @@
     const diff=n(diffInput.value);
     const cost=costInSaleCurrency(p);
     let sale;
+
     if(mode==='margin'){
       sale=cost*(1+margin/100);
     }else if(mode==='diff'){
       sale=cost+diff;
     }else{
-      // Kaydet butonu: yüzdeyi esas alır. Böylece iki alan arasında tutarsızlık kalmaz.
+      // Kaydet düğmesinde yüzdeyi esas alır.
       sale=cost*(1+margin/100);
     }
     sale=Math.max(0,Number(sale.toFixed(4)));
 
-    // UI anında güncellensin.
-    p.sale=sale;
-    const saleValue=document.querySelector(`[data-sale-value="${CSS.escape(String(id))}"]`);
-    if(saleValue) saleValue.textContent=fmt(sale);
-
     if(state.demo){
+      p.sale=sale;
       const fresh=calc(p);
       marginInput.value=fresh.pct.toFixed(1);
       diffInput.value=fresh.diff.toFixed(2);
+      const saleValue=document.querySelector(`[data-sale-value="${CSS.escape(String(id))}"]`);
+      if(saleValue) saleValue.textContent=fmt(sale);
       toast('Demo modunda fiyat değişikliği kalıcı olarak kaydedilmez');
       return;
     }
 
-    if(!window.sb){ toast('Supabase bağlantısı bulunamadı','bad'); return; }
+    const client=getSupabase();
+    if(!client){ toast('Supabase bağlantısı bulunamadı','bad'); return; }
+
     const btn=editor.querySelector('.inline-price-save');
     if(btn){btn.disabled=true;btn.textContent='…';}
     try{
-      const r=await sb.from('products').update({sale_price:sale,updated_at:new Date().toISOString()}).eq('id',id);
+      const r=await client.from('products').update({sale_price:sale,updated_at:new Date().toISOString()}).eq('id',id);
       if(r.error) throw r.error;
+
+      // Veritabanına başarılı yazıldıktan sonra local state'i güncelle.
+      p.sale=sale;
+      const saleValue=document.querySelector(`[data-sale-value="${CSS.escape(String(id))}"]`);
+      if(saleValue) saleValue.textContent=fmt(sale);
       const fresh=calc(p);
       marginInput.value=fresh.pct.toFixed(1);
       diffInput.value=fresh.diff.toFixed(2);
@@ -134,7 +146,6 @@
       setTimeout(()=>editor.classList.remove('saved'),900);
     }catch(err){
       if(typeof toast==='function') toast(`Fiyat kaydedilemedi: ${err.message}`,'bad');
-      // Sunucudan gelen eski değeri yeniden yükle.
       try{await loadData();render(document.querySelector('#product-search')?.value||'')}catch{}
     }finally{
       if(btn){btn.disabled=false;btn.textContent='✓';}
