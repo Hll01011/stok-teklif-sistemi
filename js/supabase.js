@@ -1,6 +1,10 @@
-const SUPABASE_URL = 'https://YOUR_PROJECT_REF.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_PUBLISHABLE_OR_ANON_KEY';
+const SUPABASE_URL = 'https://mshiwsqjscvtmzordxpb.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8XOxIx_2pAILlGPBV-xT5Q_yvQzMSp_';
 
-window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
 });
