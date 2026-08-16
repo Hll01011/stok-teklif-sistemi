@@ -2,7 +2,7 @@
 (function(){
   const KEY='his_stock_categories_v2';
   const DEFAULT=['Pano','Havalandırma','Yemleme','Sulama','Elektrik','Kablo','Otomasyon','Sensör','Aydınlatma','Fan','Motor','Pano Malzemeleri','Kümes Ekipmanları','Diğer'];
-  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const esc=v=>String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
   let categories=[];
   const localLoad=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return [...new Set([...DEFAULT,...x].map(v=>String(v).trim()).filter(Boolean))]}catch{return [...DEFAULT]}};
   const localSave=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch{}};
@@ -64,5 +64,6 @@
   window.hisRefreshCategories=load;
   window.hisAddStockCategory=add;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-  const pricing=document.createElement('script');pricing.src='pricing.js?v=1';pricing.async=false;document.head.appendChild(pricing);
+  const pricing=document.createElement('script');pricing.src='pricing.js?v=2';pricing.async=false;document.head.appendChild(pricing);
+  const stockPricing=document.createElement('script');stockPricing.src='stock-pricing.js?v=1';stockPricing.async=false;document.head.appendChild(stockPricing);
 })();
