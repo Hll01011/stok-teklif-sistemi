@@ -1,0 +1,4 @@
+-- Compatibility marker for the migration already recorded in the remote Supabase project.
+-- The current canonical schema is rebuilt by the 20260816190000+ migrations.
+-- Keeping this version in source prevents Supabase Preview from reporting:
+-- "Remote migration versions not found in local migrations directory."
