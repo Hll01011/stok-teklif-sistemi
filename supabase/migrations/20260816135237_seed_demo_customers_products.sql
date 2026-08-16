@@ -1,0 +1,3 @@
+-- Migration history reconciliation.
+-- Demo seed data was already applied to the production database.
+-- Intentionally not replayed here to avoid duplicate demo records.
