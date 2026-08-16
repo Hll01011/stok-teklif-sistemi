@@ -66,4 +66,5 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   const pricing=document.createElement('script');pricing.src='pricing.js?v=2';pricing.async=false;document.head.appendChild(pricing);
   const stockPricing=document.createElement('script');stockPricing.src='stock-pricing.js?v=1';stockPricing.async=false;document.head.appendChild(stockPricing);
+  const quoteUnits=document.createElement('script');quoteUnits.src='quote-units.js?v=1';quoteUnits.async=false;document.head.appendChild(quoteUnits);
 })();
