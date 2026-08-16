@@ -1,0 +1,3 @@
+-- Migration history reconciliation.
+-- Poultry/automation demo products were already applied to production.
+-- Intentionally not replayed here to avoid duplicate records.
