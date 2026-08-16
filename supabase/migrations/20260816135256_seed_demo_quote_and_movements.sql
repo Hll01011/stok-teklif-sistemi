@@ -1,3 +1,0 @@
--- Migration history reconciliation.
--- Demo quote and movement seed data was already applied to production.
--- Intentionally not replayed here to avoid duplicate records.

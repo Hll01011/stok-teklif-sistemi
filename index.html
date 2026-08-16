@@ -1,13 +1,82 @@
-<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#07111f"><meta name="description" content="HIS Stok Takip ve Fiyat Teklifi Yönetim Sistemi"><title>HIS • Stok & Teklif</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="styles.css"></head><body>
-<div id="toast-root" aria-live="polite"></div><div id="auth-view" class="auth-shell"><div class="auth-card glass"><div class="brand-mark">ST</div><div class="eyebrow">HIS • STOK & TEKLİF</div><h1>İşinizi tek ekrandan yönetin.</h1><p class="muted">Stok, cari, teklif, Excel ve raporlar tek sistemde.</p><form id="login-form" class="stack"><label>E-posta<input id="login-email" type="email" autocomplete="email" required placeholder="ornek@firma.com"></label><label>Şifre<input id="login-password" type="password" autocomplete="current-password" required placeholder="••••••••"></label><button class="btn primary full">Giriş yap</button></form><button id="demo-btn" class="btn ghost full">Demo modu ile devam et</button></div></div>
-<div id="app-view" class="app hidden"><aside class="sidebar" id="sidebar"><div class="sidebar-brand"><span class="brand-mark sm">ST</span><span>HIS Stok & Teklif</span></div><nav><button class="nav-item active" data-page="dashboard">⌂ Genel Bakış</button><button class="nav-item" data-page="products">▦ Stoklar</button><button class="nav-item" data-page="customers">♙ Cariler</button><button class="nav-item" data-page="quotes">▤ Teklifler</button><button class="nav-item" data-page="movements">↕ Hareketler</button><button class="nav-item" data-page="settings">⚙ Ayarlar</button></nav><div class="sidebar-footer"><span id="connection-dot" class="dot"></span><span id="connection-label">Bağlantı</span></div></aside><main class="main"><header class="topbar"><button id="menu-btn" class="icon-btn mobile-only">☰</button><div><div class="eyebrow" id="page-kicker">GENEL BAKIŞ</div><h2 id="page-title">Dashboard</h2></div><div class="top-actions"><button id="global-add" class="btn primary">+ Yeni</button><button id="logout-btn" class="avatar">H</button></div></header>
-<section id="page-dashboard" class="page active-page"><div class="hero-grid"><div class="hero-card glass"><div class="eyebrow">HIS STOK YÖNETİMİ</div><h3>Kontrol sende.</h3><p>Binlerce ürün, cari hesaplar, stok hareketleri ve profesyonel teklifler.</p><button class="btn light" data-page-jump="quotes">Teklif oluştur →</button></div><div class="stats-grid"><article class="stat-card"><span>Aktif ürün</span><strong id="stat-products">0</strong><small>stok kartı</small></article><article class="stat-card"><span>Kritik stok</span><strong id="stat-low">0</strong><small>yenileme gerekli</small></article><article class="stat-card"><span>Teklif</span><strong id="stat-quotes">0</strong><small>aktif kayıt</small></article><article class="stat-card"><span>Açık bakiye</span><strong id="stat-balance">₺0</strong><small>cari toplamı</small></article></div></div><div class="section-head"><div><h3>Hızlı işlemler</h3><p class="muted">Günlük işlemler.</p></div></div><div class="quick-grid"><button class="quick-card" data-page-jump="products"><b>+ Stok kartı</b><span>Yeni ürün</span></button><button class="quick-card" data-page-jump="customers"><b>+ Cari kartı</b><span>Müşteri / tedarikçi</span></button><button class="quick-card" data-page-jump="quotes"><b>+ Teklif</b><span>Profesyonel PDF</span></button><button class="quick-card" data-page-jump="movements"><b>↕ Stok hareketi</b><span>Giriş / çıkış</span></button></div><div class="two-col"><div class="panel"><div class="section-head"><h3>Son teklifler</h3><button class="text-btn" data-page-jump="quotes">Tümü</button></div><div id="recent-quotes" class="list"></div></div><div class="panel"><div class="section-head"><h3>Kritik stoklar</h3><button class="text-btn" data-page-jump="products">Stoklar</button></div><div id="low-stock-list" class="list"></div></div></div></section>
-<section id="page-products" class="page"><div class="toolbar"><div class="search"><span>⌕</span><input id="product-search" placeholder="Ürün, kod veya kategori ara..."></div><div class="toolbar-actions"><button class="btn ghost" id="import-products">Excel içe aktar</button><button class="btn ghost" id="export-products">Excel dışa aktar</button><button class="btn primary" id="add-product">+ Ürün</button><input id="product-file" type="file" accept=".xlsx,.xls,.csv" hidden></div></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Kod</th><th>Ürün</th><th>Kategori</th><th>Stok</th><th>Birim</th><th>Alış</th><th>Satış</th><th>Kur</th><th></th></tr></thead><tbody id="products-body"></tbody></table></div></div></section>
-<section id="page-customers" class="page"><div class="toolbar"><div class="search"><span>⌕</span><input id="customer-search" placeholder="Cari ara..."></div><button class="btn primary" id="add-customer">+ Cari</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Unvan</th><th>Yetkili</th><th>Telefon</th><th>Vergi No</th><th>Bakiye</th><th>Tip</th><th></th></tr></thead><tbody id="customers-body"></tbody></table></div></div></section>
-<section id="page-quotes" class="page"><div class="toolbar"><div class="search"><span>⌕</span><input id="quote-search" placeholder="Teklif no veya müşteri ara..."></div><button class="btn primary" id="add-quote">+ Yeni Teklif</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Teklif No</th><th>Müşteri</th><th>Tarih</th><th>Kalem</th><th>Toplam</th><th>Durum</th><th>PDF</th></tr></thead><tbody id="quotes-body"></tbody></table></div></div></section>
-<section id="page-movements" class="page"><div class="toolbar"><div><h3>Stok hareketleri</h3><p class="muted">Giriş, çıkış ve fire kayıtları.</p></div><button class="btn primary" id="add-movement">+ Hareket</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Ürün</th><th>Tür</th><th>Miktar</th><th>Birim fiyat</th><th>Açıklama</th></tr></thead><tbody id="movements-body"></tbody></table></div></div></section>
-<section id="page-settings" class="page"><div class="settings-grid"><div class="panel"><h3>Kur bilgisi</h3><p class="muted">USD ürün maliyetlerini TL karşılığına çevir.</p><div class="setting-row"><span>USD/TRY</span><b id="usd-rate">Alınıyor…</b></div><button class="btn ghost" id="refresh-rate">Kuru yenile</button></div><div class="panel"><h3>Hesap</h3><p id="user-email" class="muted">-</p><div class="setting-row"><span>Bağlantı</span><b id="settings-connection">-</b></div><button id="settings-logout" class="btn danger">Çıkış yap</button></div></div></section></main></div>
-<nav class="bottom-nav"><button class="active" data-page="dashboard">⌂<small>Özet</small></button><button data-page="products">▦<small>Stok</small></button><button data-page="customers">♙<small>Cari</small></button><button data-page="quotes">▤<small>Teklif</small></button><button data-page="settings">⚙<small>Ayar</small></button></nav>
-<dialog id="modal"><div class="modal-head"><h3 id="modal-title">Yeni kayıt</h3><button id="modal-close" class="icon-btn">×</button></div><form id="modal-form" class="modal-form"></form><div class="modal-actions"><button id="modal-cancel" class="btn ghost" type="button">Vazgeç</button><button id="modal-save" class="btn primary" type="submit" form="modal-form">Kaydet</button></div></dialog>
-<dialog id="quote-modal" class="quote-dialog"><div class="modal-head"><div><div class="eyebrow">SATIŞ • TEKLİF</div><h3 id="quote-modal-title">Yeni Teklif</h3></div><button id="quote-close" class="icon-btn">×</button></div><form id="quote-form" class="quote-form"><div class="quote-meta-grid"><label>Müşteri<select id="q-customer" required></select></label><label>Teklif No<input id="q-number" required></label><label>Tarih<input id="q-date" type="date" required></label><label>Geçerlilik<input id="q-valid" type="date"></label></div><div class="quote-product-add"><select id="q-product"></select><input id="q-qty" type="number" min="0.01" step="0.01" value="1"><input id="q-price" type="number" min="0" step="0.01" placeholder="Satış fiyatı"><input id="q-margin" type="number" step="0.1" placeholder="Kâr %"><button id="q-add-item" type="button" class="btn primary">+ Kalem</button></div><div class="quote-items-wrap"><table class="quote-items"><thead><tr><th>Ürün</th><th>Miktar</th><th>Birim</th><th>Kâr %</th><th>Tutar</th><th></th></tr></thead><tbody id="q-items"></tbody></table></div><div class="quote-bottom"><div><label>İskonto %<input id="q-discount" type="number" min="0" max="100" step="0.01" value="0"></label><label>KDV %<input id="q-vat" type="number" min="0" max="100" step="0.01" value="20"></label><label>Notlar<textarea id="q-notes" rows="3" placeholder="Teslimat, ödeme ve diğer notlar..."></textarea></label></div><div class="quote-summary"><div><span>Ara toplam</span><b id="q-subtotal">₺0,00</b></div><div><span>İskonto</span><b id="q-discount-amount">₺0,00</b></div><div><span>KDV matrahı</span><b id="q-taxable">₺0,00</b></div><div><span>KDV</span><b id="q-vat-amount">₺0,00</b></div><div class="grand"><span>GENEL TOPLAM</span><b id="q-total">₺0,00</b></div></div></div></form><div class="modal-actions"><button id="q-cancel" class="btn ghost" type="button">Vazgeç</button><button id="q-save-pdf" class="btn ghost" type="button">Kaydet + PDF</button><button id="q-save" class="btn primary" type="button">Teklifi Kaydet</button></div></dialog><div id="pdf-template" class="pdf-template"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="app.js"></script><script src="category.js?v=2"></script><script src="quote-pdf-fix.js?v=3"></script></body></html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HIS Stok & Teklif</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div id="toast"></div>
+
+<section id="loginView" class="login-view">
+  <div class="login-card">
+    <div class="brand-mark">ST</div>
+    <span class="eyebrow">HIS • STOK & TEKLİF</span>
+    <h1>İşinizi tek ekrandan yönetin.</h1>
+    <p>Stok, müşteriler, teklifler ve hareketler. Mobilde de masaüstünde de hızlı.</p>
+    <form id="loginForm">
+      <label>E-posta<input id="loginEmail" type="email" required autocomplete="email" placeholder="ornek@firma.com"></label>
+      <label>Şifre<input id="loginPassword" type="password" required autocomplete="current-password" placeholder="••••••••"></label>
+      <button class="primary full" type="submit">Giriş yap</button>
+    </form>
+    <button id="resetBtn" class="ghost full">Şifremi unuttum</button>
+    <small>Yalnızca yetkili kullanıcılar erişebilir.</small>
+  </div>
+</section>
+
+<div id="appView" class="app hidden">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">ST</div><strong>HIS Stok & Teklif</strong></div>
+    <nav>
+      <button data-page="dashboard" class="nav-item active">⌂ <span>Genel Bakış</span></button>
+      <button data-page="stocks" class="nav-item">▦ <span>Stoklar</span></button>
+      <button data-page="customers" class="nav-item">♙ <span>Cari / Müşteriler</span></button>
+      <button data-page="quotes" class="nav-item">▤ <span>Teklifler</span></button>
+      <button data-page="transactions" class="nav-item">↕ <span>Hareketler</span></button>
+      <button data-page="settings" class="nav-item">⚙ <span>Ayarlar</span></button>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot"></span> Supabase bağlı</div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar"><div><span id="pageEyebrow" class="eyebrow">GENEL BAKIŞ</span><h2 id="pageTitle">Dashboard</h2></div><div class="top-actions"><span id="userEmail"></span><button id="logoutBtn" class="icon-btn" title="Çıkış">↪</button></div></header>
+
+    <section id="dashboard" class="page active-page">
+      <div class="stats-grid">
+        <div class="stat-card"><span>Toplam ürün</span><strong id="statProducts">0</strong></div>
+        <div class="stat-card"><span>Kritik stok</span><strong id="statCritical">0</strong></div>
+        <div class="stat-card"><span>Açık teklifler</span><strong id="statOpenQuotes">0</strong></div>
+        <div class="stat-card"><span>Onaylanan teklifler</span><strong id="statApproved">0</strong></div>
+      </div>
+      <div class="two-col">
+        <div class="panel"><div class="panel-head"><div><span class="eyebrow">DİKKAT</span><h3>Kritik stoklar</h3></div><button class="link-btn" data-page-link="stocks">Tümünü gör</button></div><div id="criticalList" class="list"></div></div>
+        <div class="panel"><div class="panel-head"><div><span class="eyebrow">SON İŞLEMLER</span><h3>Stok hareketleri</h3></div></div><div id="recentTransactions" class="list"></div></div>
+      </div>
+    </section>
+
+    <section id="stocks" class="page">
+      <div class="toolbar"><div class="search-wrap"><select id="stockCategoryFilter"><option value="">Tüm kategoriler</option></select><input id="stockSearch" placeholder="Ürün, kod veya kategori ara..."></div><div class="toolbar-actions"><button id="excelImportBtn" class="secondary">Excel içe aktar</button><button id="excelExportBtn" class="secondary">Excel dışa aktar</button><button id="newProductBtn" class="primary">+ Ürün</button></div></div>
+      <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>
+      <div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th><input id="selectAllProducts" type="checkbox"></th><th>KOD</th><th>ÜRÜN</th><th>KATEGORİ</th><th>STOK</th><th>BİRİM</th><th>ALIŞ</th><th>SATIŞ</th><th>FİYATLANDIRMA</th><th>KUR</th><th>TEKLİF</th><th></th></tr></thead><tbody id="stockBody"></tbody></table></div></div>
+    </section>
+
+    <section id="customers" class="page"><div class="toolbar"><div><span class="eyebrow">CARİ</span><h3>Müşteriler</h3></div><button id="newCustomerBtn" class="primary">+ Müşteri</button></div><div id="customerGrid" class="cards-grid"></div></section>
+
+    <section id="quotes" class="page"><div class="toolbar"><div><span class="eyebrow">TEKLİFLER</span><h3>Teklif geçmişi</h3></div><button id="newQuoteBtn" class="primary">+ Yeni teklif</button></div><div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>TEKLİF</th><th>MÜŞTERİ</th><th>TARİH</th><th>GEÇERLİLİK</th><th>DURUM</th><th>TOPLAM</th><th></th></tr></thead><tbody id="quotesBody"></tbody></table></div></div></section>
+
+    <section id="transactions" class="page"><div class="toolbar"><div><span class="eyebrow">ENVANTER</span><h3>Stok hareketleri</h3></div></div><div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>TARİH</th><th>ÜRÜN</th><th>İŞLEM</th><th>MİKTAR</th><th>FİYAT</th><th>AÇIKLAMA</th></tr></thead><tbody id="transactionsBody"></tbody></table></div></div></section>
+
+    <section id="settings" class="page"><div class="panel settings-panel"><span class="eyebrow">AYARLAR</span><h3>Fiyatlandırma mantığı</h3><p>Her ürün için stok ekranından kart açmadan yüzde veya net TL/USD farkı belirleyebilirsiniz.</p><div class="info-box"><b>Yüzde:</b> Alış × (1 + oran / 100)<br><b>Sabit fark:</b> Alış + net fark</div></div></section>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden"><div class="modal-card"><button id="modalClose" class="modal-close">×</button><div id="modalContent"></div></div></div>
+
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

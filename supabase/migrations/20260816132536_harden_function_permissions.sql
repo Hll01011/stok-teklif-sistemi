@@ -1,3 +1,0 @@
--- Migration history reconciliation.
--- The production database already contains this change.
--- Kept as an explicit migration file so GitHub and Supabase migration histories remain aligned.

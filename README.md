@@ -1,22 +1,14 @@
-# Stok Teklif Sistemi
+# HIS Stok & Teklif
 
-Mobil-first stok, cari, teklif ve stok hareketleri uygulaması.
+Temiz Supabase + PostgreSQL + GitHub Pages tabanlı stok, müşteri ve teklif yönetimi.
 
-## Modüller
-- Genel bakış / KPI dashboard
-- Stok kartları ve kritik stok görünümü
-- Cari kartları ve bakiye takibi
-- Teklif kayıtları
-- Stok giriş / çıkış hareketleri
+## Mimari
+- Vanilla HTML/CSS/JS
 - Supabase Auth + PostgreSQL + RLS
-- GitHub Pages dağıtımı
-- Tam responsive mobil arayüz
+- GitHub Pages
+- Excel içe/dışa aktarım
+- PDF teklif çıktısı
+- Atomik teklif onayı ve stok düşümü
+- Ürün bazlı yüzde veya net fiyat farkı
 
-## Canlı bağlantı
-Uygulama `app.js` içindeki Supabase proje URL'sini kullanır. Publishable key'i `YOUR_SUPABASE_PUBLISHABLE_KEY` yerine ekleyin. Publishable/anon anahtar istemci tarafında kullanılmak üzere tasarlanmıştır; service-role anahtarını kesinlikle frontend'e koymayın.
-
-## Veritabanı
-`supabase/migrations/001_initial_schema.sql` migration'ı çalıştırıldığında tablolar, indeksler, RLS politikaları, kullanıcı profili trigger'ı ve stok hareketi trigger'ı oluşturulur.
-
-## GitHub Pages
-`.github/workflows/pages.yml` her `main` push'unda statik siteyi GitHub Pages'e deploy eder. Repository Settings → Pages altında Source olarak **GitHub Actions** seçili olmalıdır.
+Migration dosyaları `supabase/migrations/` altında kronolojik tutulur. Frontend ile database alan adları aynı contract'ı kullanır.
