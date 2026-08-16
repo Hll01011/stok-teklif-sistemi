@@ -1,0 +1,3 @@
+-- Migration history reconciliation.
+-- Poultry-house project catalog seed data was already applied to production.
+-- Intentionally not replayed here to avoid duplicate records.
