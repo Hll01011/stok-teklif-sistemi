@@ -36,6 +36,7 @@
     const select=wrap.querySelector('select');const current=select.value;
     select.innerHTML='<option value="">Tüm kategoriler</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');if(categories.includes(current))select.value=current;
     if(!select.dataset.bound){select.dataset.bound='1';select.addEventListener('change',applyFilter)}
+    if(!search.dataset.categoryBound){search.dataset.categoryBound='1';search.addEventListener('input',()=>{clearTimeout(search.__categoryTimer);search.__categoryTimer=setTimeout(applyFilter,80)})}
   }
   function applyFilter(){
     const search=document.querySelector('#product-search');const select=document.querySelector('#product-category-filter');
