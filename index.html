@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Stok, cari, teklif ve satış yönetim sistemi" />
+  <title>Stok Teklif Sistemi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="toast-root" aria-live="polite"></div>
+  <div id="auth-view" class="auth-shell">
+    <div class="auth-card glass">
+      <div class="brand-mark">ST</div>
+      <div class="eyebrow">HIS • STOK & TEKLİF</div>
+      <h1>İşinizi tek ekrandan yönetin.</h1>
+      <p class="muted">Stok, müşteriler, teklifler ve hareketler. Mobilde de masaüstünde de hızlı.</p>
+      <form id="login-form" class="stack">
+        <label>E-posta<input id="login-email" type="email" autocomplete="email" required placeholder="ornek@firma.com"></label>
+        <label>Şifre<input id="login-password" type="password" autocomplete="current-password" required placeholder="••••••••"></label>
+        <button class="btn primary full" type="submit">Giriş yap</button>
+      </form>
+      <button id="demo-btn" class="btn ghost full" type="button">Demo modu ile devam et</button>
+      <p id="auth-note" class="tiny muted">Supabase bağlantısı için yapılandırma gerekiyorsa uygulama bunu gösterecektir.</p>
+    </div>
+  </div>
+
+  <div id="app-view" class="app hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand"><span class="brand-mark sm">ST</span><span>Stok Teklif</span></div>
+      <nav id="desktop-nav">
+        <button class="nav-item active" data-page="dashboard"><span>⌂</span> Genel Bakış</button>
+        <button class="nav-item" data-page="products"><span>▦</span> Stoklar</button>
+        <button class="nav-item" data-page="customers"><span>♙</span> Cariler</button>
+        <button class="nav-item" data-page="quotes"><span>▤</span> Teklifler</button>
+        <button class="nav-item" data-page="movements"><span>↕</span> Hareketler</button>
+        <button class="nav-item" data-page="settings"><span>⚙</span> Ayarlar</button>
+      </nav>
+      <div class="sidebar-footer"><span id="connection-dot" class="dot"></span><span id="connection-label">Bağlantı kontrol ediliyor</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="menu-btn" class="icon-btn mobile-only" aria-label="Menüyü aç">☰</button>
+        <div><div class="eyebrow" id="page-kicker">GENEL BAKIŞ</div><h2 id="page-title">Dashboard</h2></div>
+        <div class="top-actions"><button id="global-add" class="btn primary">+ Yeni</button><button id="logout-btn" class="avatar" title="Çıkış">H</button></div>
+      </header>
+
+      <section id="page-dashboard" class="page active-page">
+        <div class="hero-grid">
+          <div class="hero-card glass"><div class="eyebrow">BUGÜN</div><h3>Kontrol sende.</h3><p>Stok seviyelerini, açık teklifleri ve cari bakiyeleri tek bakışta takip et.</p><button class="btn light" data-page-jump="quotes">Teklif oluştur →</button></div>
+          <div class="stats-grid">
+            <article class="stat-card"><span>Ürün</span><strong id="stat-products">0</strong><small>aktif stok kartı</small></article>
+            <article class="stat-card"><span>Düşük stok</span><strong id="stat-low">0</strong><small>yenileme bekliyor</small></article>
+            <article class="stat-card"><span>Teklif</span><strong id="stat-quotes">0</strong><small>toplam teklif</small></article>
+            <article class="stat-card"><span>Açık bakiye</span><strong id="stat-balance">₺0</strong><small>cari toplamı</small></article>
+          </div>
+        </div>
+        <div class="section-head"><div><h3>Hızlı işlemler</h3><p class="muted">En sık kullandığın işlemlere tek dokunuş.</p></div></div>
+        <div class="quick-grid">
+          <button class="quick-card" data-page-jump="products"><b>+ Stok kartı</b><span>Yeni ürün ekle</span></button>
+          <button class="quick-card" data-page-jump="customers"><b>+ Cari kartı</b><span>Müşteri / tedarikçi</span></button>
+          <button class="quick-card" data-page-jump="quotes"><b>+ Teklif</b><span>Profesyonel teklif hazırla</span></button>
+          <button class="quick-card" data-page-jump="movements"><b>↕ Stok hareketi</b><span>Giriş / çıkış kaydet</span></button>
+        </div>
+        <div class="two-col"><div class="panel"><div class="section-head"><h3>Son teklifler</h3><button class="text-btn" data-page-jump="quotes">Tümü</button></div><div id="recent-quotes" class="list"></div></div><div class="panel"><div class="section-head"><h3>Kritik stoklar</h3><button class="text-btn" data-page-jump="products">Stoklar</button></div><div id="low-stock-list" class="list"></div></div></div>
+      </section>
+
+      <section id="page-products" class="page"><div class="toolbar"><div class="search"><span>⌕</span><input id="product-search" placeholder="Ürün, kod veya kategori ara..."></div><button class="btn primary" id="add-product">+ Ürün</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Kod</th><th>Ürün</th><th>Kategori</th><th>Stok</th><th>Birim</th><th>Alış</th><th>Satış</th><th></th></tr></thead><tbody id="products-body"></tbody></table></div></div></section>
+
+      <section id="page-customers" class="page"><div class="toolbar"><div class="search"><span>⌕</span><input id="customer-search" placeholder="Cari ara..."></div><button class="btn primary" id="add-customer">+ Cari</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Unvan</th><th>Yetkili</th><th>Telefon</th><th>Vergi No</th><th>Bakiye</th><th>Tip</th><th></th></tr></thead><tbody id="customers-body"></tbody></table></div></div></section>
+
+      <section id="page-quotes" class="page"><div class="toolbar"><div class="search"><span>⌕</span><input id="quote-search" placeholder="Teklif no veya müşteri ara..."></div><button class="btn primary" id="add-quote">+ Teklif</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Teklif No</th><th>Müşteri</th><th>Tarih</th><th>Kalem</th><th>Toplam</th><th>Durum</th><th></th></tr></thead><tbody id="quotes-body"></tbody></table></div></div></section>
+
+      <section id="page-movements" class="page"><div class="toolbar"><div><h3>Stok hareketleri</h3><p class="muted">Giriş ve çıkışları kayıt altında tut.</p></div><button class="btn primary" id="add-movement">+ Hareket</button></div><div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Ürün</th><th>Tür</th><th>Miktar</th><th>Açıklama</th></tr></thead><tbody id="movements-body"></tbody></table></div></div></section>
+
+      <section id="page-settings" class="page"><div class="settings-grid"><div class="panel"><h3>Uygulama</h3><p class="muted">Mobil-first stok ve teklif yönetimi.</p><div class="setting-row"><span>Bağlantı</span><b id="settings-connection">Kontrol ediliyor</b></div><div class="setting-row"><span>Veri kaynağı</span><b id="settings-source">Supabase</b></div></div><div class="panel"><h3>Hesap</h3><p id="user-email" class="muted">-</p><button id="settings-logout" class="btn danger">Çıkış yap</button></div></div></section>
+    </main>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"><button class="active" data-page="dashboard">⌂<small>Özet</small></button><button data-page="products">▦<small>Stok</small></button><button data-page="customers">♙<small>Cari</small></button><button data-page="quotes">▤<small>Teklif</small></button><button data-page="settings">⚙<small>Ayar</small></button></nav>
+
+  <dialog id="modal"><div class="modal-head"><h3 id="modal-title">Yeni kayıt</h3><button id="modal-close" class="icon-btn">×</button></div><form id="modal-form" class="modal-form"></form><div class="modal-actions"><button id="modal-cancel" class="btn ghost" type="button">Vazgeç</button><button id="modal-save" class="btn primary" type="submit" form="modal-form">Kaydet</button></div></dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
