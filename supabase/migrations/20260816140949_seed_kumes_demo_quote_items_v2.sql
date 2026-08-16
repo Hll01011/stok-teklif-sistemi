@@ -1,0 +1,3 @@
+-- Migration history reconciliation.
+-- Poultry-house demo quotation item seed data was already applied to production.
+-- Intentionally not replayed here to avoid duplicate records.
