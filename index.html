@@ -11,7 +11,6 @@
 </head>
 <body>
 <div id="toast"></div>
-
 <div id="appView" class="app">
   <aside class="sidebar">
     <div class="brand"><div class="brand-mark">ST</div><strong>HIS Stok & Teklif</strong></div>
@@ -25,38 +24,22 @@
     </nav>
     <div class="sidebar-foot"><span class="status-dot"></span> Demo bağlantısı</div>
   </aside>
-
   <main class="main">
     <header class="topbar"><div><span id="pageEyebrow" class="eyebrow">GENEL BAKIŞ</span><h2 id="pageTitle">Dashboard</h2></div><div class="top-actions"><span id="userEmail">DEMO MODU</span></div></header>
-
     <section id="dashboard" class="page active-page">
-      <div class="stats-grid">
-        <div class="stat-card"><span>Toplam ürün</span><strong id="statProducts">0</strong></div>
-        <div class="stat-card"><span>Kritik stok</span><strong id="statCritical">0</strong></div>
-        <div class="stat-card"><span>Açık teklifler</span><strong id="statOpenQuotes">0</strong></div>
-        <div class="stat-card"><span>Onaylanan teklifler</span><strong id="statApproved">0</strong></div>
-      </div>
-      <div class="two-col">
-        <div class="panel"><div class="panel-head"><div><span class="eyebrow">DİKKAT</span><h3>Kritik stoklar</h3></div><button class="link-btn" data-page-link="stocks">Tümünü gör</button></div><div id="criticalList" class="list"></div></div>
-        <div class="panel"><div class="panel-head"><div><span class="eyebrow">SON İŞLEMLER</span><h3>Stok hareketleri</h3></div></div><div id="recentTransactions" class="list"></div></div>
-      </div>
+      <div class="stats-grid"><div class="stat-card"><span>Toplam ürün</span><strong id="statProducts">0</strong></div><div class="stat-card"><span>Kritik stok</span><strong id="statCritical">0</strong></div><div class="stat-card"><span>Açık teklifler</span><strong id="statOpenQuotes">0</strong></div><div class="stat-card"><span>Onaylanan teklifler</span><strong id="statApproved">0</strong></div></div>
+      <div class="two-col"><div class="panel"><div class="panel-head"><div><span class="eyebrow">DİKKAT</span><h3>Kritik stoklar</h3></div><button class="link-btn" data-page-link="stocks">Tümünü gör</button></div><div id="criticalList" class="list"></div></div><div class="panel"><div class="panel-head"><div><span class="eyebrow">SON İŞLEMLER</span><h3>Stok hareketleri</h3></div></div><div id="recentTransactions" class="list"></div></div></div>
     </section>
-
-    <section id="stocks" class="page">
-      <div class="toolbar"><div class="search-wrap"><select id="stockCategoryFilter"><option value="">Tüm kategoriler</option></select><input id="stockSearch" placeholder="Ürün, kod veya kategori ara..."></div><div class="toolbar-actions"><button id="excelImportBtn" class="secondary">Excel içe aktar</button><button id="excelExportBtn" class="secondary">Excel dışa aktar</button><button id="newProductBtn" class="primary">+ Ürün</button></div></div>
-      <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>
-      <div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th><input id="selectAllProducts" type="checkbox"></th><th>KOD</th><th>ÜRÜN</th><th>KATEGORİ</th><th>STOK</th><th>BİRİM</th><th>ALIŞ</th><th>SATIŞ</th><th>FİYATLANDIRMA</th><th>KUR</th><th>TEKLİF</th><th></th></tr></thead><tbody id="stockBody"></tbody></table></div></div>
-    </section>
-
+    <section id="stocks" class="page"><div class="toolbar"><div class="search-wrap"><select id="stockCategoryFilter"><option value="">Tüm kategoriler</option></select><input id="stockSearch" placeholder="Ürün, kod veya kategori ara..."></div><div class="toolbar-actions"><button id="excelImportBtn" class="secondary">Excel içe aktar</button><button id="excelExportBtn" class="secondary">Excel dışa aktar</button><button id="newProductBtn" class="primary">+ Ürün</button></div></div><input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden><div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th><input id="selectAllProducts" type="checkbox"></th><th>KOD</th><th>ÜRÜN</th><th>KATEGORİ</th><th>STOK</th><th>BİRİM</th><th>ALIŞ</th><th>SATIŞ</th><th>FİYATLANDIRMA</th><th>KUR</th><th>TEKLİF</th><th></th></tr></thead><tbody id="stockBody"></tbody></table></div></div></section>
     <section id="customers" class="page"><div class="toolbar"><div><span class="eyebrow">CARİ</span><h3>Müşteriler</h3></div><button id="newCustomerBtn" class="primary">+ Müşteri</button></div><div id="customerGrid" class="cards-grid"></div></section>
     <section id="quotes" class="page"><div class="toolbar"><div><span class="eyebrow">TEKLİFLER</span><h3>Teklif geçmişi</h3></div><button id="newQuoteBtn" class="primary">+ Yeni teklif</button></div><div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>TEKLİF</th><th>MÜŞTERİ</th><th>TARİH</th><th>GEÇERLİLİK</th><th>DURUM</th><th>TOPLAM</th><th></th></tr></thead><tbody id="quotesBody"></tbody></table></div></div></section>
     <section id="transactions" class="page"><div class="toolbar"><div><span class="eyebrow">ENVANTER</span><h3>Stok hareketleri</h3></div></div><div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>TARİH</th><th>ÜRÜN</th><th>İŞLEM</th><th>MİKTAR</th><th>FİYAT</th><th>AÇIKLAMA</th></tr></thead><tbody id="transactionsBody"></tbody></table></div></div></section>
     <section id="settings" class="page"><div class="panel settings-panel"><span class="eyebrow">AYARLAR</span><h3>Fiyatlandırma mantığı</h3><p>Her ürün için stok ekranından kart açmadan yüzde veya net TL/USD farkı belirleyebilirsiniz.</p><div class="info-box"><b>Yüzde:</b> Alış × (1 + oran / 100)<br><b>Sabit fark:</b> Alış + net fark</div></div></section>
   </main>
 </div>
-
 <div id="modal" class="modal hidden"><div class="modal-card"><button id="modalClose" class="modal-close">×</button><div id="modalContent"></div></div></div>
 <script src="js/supabase.js"></script>
+<script src="js/demo-mode.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
