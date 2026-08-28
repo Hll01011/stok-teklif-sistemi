@@ -95,38 +95,69 @@ async function exportQuotePdf(q,items){
  const filename=q.quote_number+'-HIS-Teklif.pdf';
  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
  const popup=isIOS?window.open('about:blank','_blank'):null;
- if(!window.html2pdf){
-   if(popup)popup.close();
-   toast('PDF kütüphanesi yüklenemedi. Sayfayı tamamen yenileyip tekrar deneyin.','error');
-   return;
- }
- toast('PDF hazırlanıyor...');
- const box=document.createElement('div');
- box.style.cssText='position:fixed;left:-10000px;top:0;width:794px;padding:36px;font-family:Arial;color:#172033;background:#fff;box-sizing:border-box';
- const rows=items.map((i,n)=>'<tr><td>'+ (n+1)+'</td><td><b>'+esc(i.product_name)+'</b><br><small>'+esc(i.product_code||'')+'</small></td><td>'+i.quantity+' '+esc(i.unit)+'</td><td>'+money(i.unit_price,q.currency)+'</td><td>'+money(i.line_total,q.currency)+'</td></tr>').join('');
- box.innerHTML='<h1 style="margin:0;color:#173b66">HİS OTOMASYON</h1><h2>FİYAT TEKLİFİ</h2><p><b>Teklif No:</b> '+esc(q.quote_number)+'<br><b>Müşteri:</b> '+esc(q.customer_name)+'<br><b>Geçerlilik:</b> '+(q.valid_until||'-')+'</p><table style="width:100%;border-collapse:collapse"><thead><tr><th>#</th><th>ÜRÜN</th><th>MİKTAR</th><th>BİRİM FİYAT</th><th>TOPLAM</th></tr></thead><tbody>'+rows+'</tbody></table><h2 style="text-align:right;margin-top:25px">GENEL TOPLAM: '+money(q.grand_total,q.currency)+'</h2><p style="margin-top:35px">'+esc(q.notes||'')+'</p>';
- box.querySelectorAll('th,td').forEach(x=>x.style.cssText='border:1px solid #bbb;padding:8px;text-align:left');
- document.body.appendChild(box);
  try{
-   const worker=html2pdf().set({margin:7,filename,image:{type:'jpeg',quality:.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(box).toPdf();
-   const pdf=await worker.get('pdf');
+   const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+   if(!JsPDF) throw new Error('PDF motoru yüklenemedi');
+   if(!items||!items.length) throw new Error('Teklif kalemi bulunamadı');
+   toast('PDF hazırlanıyor...');
+   const pdf=new JsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+   const W=210, margin=15, right=195;
+   let y=18;
+   const tryFont=()=>{try{pdf.setFont('helvetica','normal')}catch(_){}};
+   tryFont();
+   pdf.setFontSize(20);pdf.setFont('helvetica','bold');pdf.text('HİS OTOMASYON',margin,y);y+=9;
+   pdf.setFontSize(13);pdf.text('FİYAT TEKLİFİ',margin,y);y+=8;
+   pdf.setDrawColor(25,59,102);pdf.setLineWidth(.8);pdf.line(margin,y,right,y);y+=8;
+   pdf.setFont('helvetica','normal');pdf.setFontSize(10);
+   pdf.text('Teklif No: '+String(q.quote_number||''),margin,y);y+=6;
+   pdf.text('Müşteri: '+String(q.customer_name||''),margin,y);y+=6;
+   pdf.text('Geçerlilik: '+String(q.valid_until||'-'),margin,y);y+=8;
+   const cols=[15,25,95,125,155,195];
+   const header=()=>{pdf.setFillColor(23,59,102);pdf.rect(15,y,180,8,'F');pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.text('#',17,y+5);pdf.text('ÜRÜN',27,y+5);pdf.text('MİKTAR',97,y+5);pdf.text('BİRİM FİYAT',127,y+5);pdf.text('TOPLAM',157,y+5);pdf.setTextColor(20,30,45);pdf.setFont('helvetica','normal');y+=8;};
+   header();
+   items.forEach((i,n)=>{
+     const product=String(i.product_name||'');
+     const code=String(i.product_code||'');
+     const wrapped=pdf.splitTextToSize(product,66);
+     const rowH=Math.max(10,wrapped.length*4+5);
+     if(y+rowH>270){pdf.addPage();y=18;header();}
+     pdf.setDrawColor(190,200,210);pdf.rect(15,y,180,rowH);
+     cols.slice(1,-1).forEach(x=>pdf.line(x,y,x,y+rowH));
+     pdf.setFontSize(8);
+     pdf.text(String(n+1),17,y+6);
+     pdf.setFont('helvetica','bold');pdf.text(wrapped,27,y+5);
+     pdf.setFont('helvetica','normal');
+     if(code){pdf.setFontSize(6.5);pdf.text(code,27,y+5+wrapped.length*4+1);}
+     pdf.setFontSize(8);
+     pdf.text(String(i.quantity||0)+' '+String(i.unit||''),97,y+6);
+     pdf.text(money(i.unit_price,q.currency),127,y+6);
+     pdf.text(money(i.line_total,q.currency),157,y+6);
+     y+=rowH;
+   });
+   y+=8;
+   if(y>265){pdf.addPage();y=25;}
+   pdf.setFont('helvetica','bold');pdf.setFontSize(13);
+   const total='GENEL TOPLAM: '+money(q.grand_total,q.currency);
+   pdf.text(total,right,y,{align:'right'});y+=10;
+   if(q.notes){pdf.setFont('helvetica','normal');pdf.setFontSize(9);const notes=pdf.splitTextToSize('Not: '+String(q.notes),180);pdf.text(notes,margin,y);}
+   const pageCount=pdf.getNumberOfPages();
+   for(let p=1;p<=pageCount;p++){pdf.setPage(p);pdf.setFontSize(7);pdf.setTextColor(110,110,110);pdf.text('HİS Otomasyon • Sayfa '+p+' / '+pageCount,105,290,{align:'center'});}
    const blob=pdf.output('blob');
+   if(!blob||blob.size<500) throw new Error('PDF içeriği oluşturulamadı');
    const url=URL.createObjectURL(blob);
    if(isIOS){
-     if(popup) popup.location.href=url;
-     else window.location.href=url;
-     toast('PDF yeni sayfada açılıyor...');
+     if(popup) popup.location.replace(url); else window.location.assign(url);
+     toast('PDF açıldı. Paylaş menüsünden Dosyalara kaydedebilirsiniz.');
    }else{
-     const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
-     toast('PDF indirildi.');
+     const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();toast('PDF indirildi.');
    }
    setTimeout(()=>URL.revokeObjectURL(url),120000);
  }catch(err){
    console.error('PDF ERROR',err);
-   if(popup)popup.close();
-   alert('PDF oluşturulamadı: '+(err?.message||err));
-   toast('PDF hatası: '+(err?.message||'Bilinmeyen hata'),'error');
- }finally{box.remove();}
+   if(popup) popup.close();
+   alert('PDF oluşturulamadı: '+(err&&err.message?err.message:String(err)));
+   toast('PDF hatası: '+(err&&err.message?err.message:'Bilinmeyen hata'),'error');
+ }
 }
 
 async function approveQuote(id){if(!confirm('Teklif onaylanacak ve ürün miktarları stoktan düşülecek. Devam edilsin mi?'))return;const r=await sb.rpc('approve_stock_quote',{p_quote_id:id});if(r.error)return toast(r.error.message,'error');toast('Teklif onaylandı, stoklar düşüldü');await loadAll()}
