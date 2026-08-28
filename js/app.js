@@ -83,7 +83,7 @@ async function saveQuote(){
  const r2=await sb.from('stock_quote_items').insert(lines);if(r2.error)return toast(r2.error.message,'error');
  closeModal();toast('Teklif oluşturuldu');await loadAll();showPage('quotes');
 }
-async function viewQuote(id){const q=state.quotes.find(x=>x.id===id),r=await sb.from('stock_quote_items').select('*').eq('quote_id',id).order('created_at');if(r.error)return toast(r.error.message,'error');openModal('<h2>'+esc(q.quote_number)+'</h2><p><b>'+esc(q.customer_name)+'</b> • '+q.status+'</p><div class="panel table-panel"><table><thead><tr><th>Ürün</th><th>Miktar</th><th>Birim fiyat</th><th>Toplam</th></tr></thead><tbody>'+r.data.map(i=>'<tr><td>'+esc(i.product_name)+'</td><td>'+i.quantity+' '+esc(i.unit)+'</td><td>'+money(i.unit_price,q.currency)+'</td><td>'+money(i.line_total,q.currency)+'</td></tr>').join('')+'</tbody></table></div><h3>Genel toplam: '+money(q.grand_total,q.currency)+'</h3><div class="form-actions"><button class="secondary" id="pdfQuote">PDF oluştur</button><button class="primary" id="closeQuote">Kapat</button></div>');$('#closeQuote').onclick=closeModal;const pdfBtn=$('#pdfQuote');if(pdfBtn)pdfBtn.onclick=()=>{try{if(!window.html2pdf)return toast('PDF kütüphanesi yüklenemedi. Sayfayı yenileyin.','error');exportQuotePdf(q,r.data)}catch(err){console.error(err);toast('PDF oluşturulurken hata oluştu: '+err.message,'error')}}}
+async function viewQuote(id){const q=state.quotes.find(x=>x.id===id),r=await sb.from('stock_quote_items').select('*').eq('quote_id',id).order('created_at');if(r.error)return toast(r.error.message,'error');window.__quotePdfItems=r.data||[];openModal('<h2>'+esc(q.quote_number)+'</h2><p><b>'+esc(q.customer_name)+'</b> • '+q.status+'</p><div class="panel table-panel"><table><thead><tr><th>Ürün</th><th>Miktar</th><th>Birim fiyat</th><th>Toplam</th></tr></thead><tbody>'+r.data.map(i=>'<tr><td>'+esc(i.product_name)+'</td><td>'+i.quantity+' '+esc(i.unit)+'</td><td>'+money(i.unit_price,q.currency)+'</td><td>'+money(i.line_total,q.currency)+'</td></tr>').join('')+'</tbody></table></div><h3>Genel toplam: '+money(q.grand_total,q.currency)+'</h3><div class="form-actions"><button class="secondary" id="pdfQuote">PDF oluştur</button><button class="primary" id="closeQuote">Kapat</button></div>');$('#closeQuote').onclick=closeModal;const pdfBtn=$('#pdfQuote');if(pdfBtn)pdfBtn.onclick=()=>{try{if(!window.html2pdf)return toast('PDF kütüphanesi yüklenemedi. Sayfayı yenileyin.','error');exportQuotePdf(q,r.data)}catch(err){console.error(err);toast('PDF oluşturulurken hata oluştu: '+err.message,'error')}}}
 function buildCategoryReportData(items){const groups={};items.forEach(i=>{const k=i.stock_categories?.name||i.category_name||'Diğer';(groups[k]??=[]).push(i)});return groups}
 function exportProjectCategoryPdf(){
  const products=state.products;const groups=buildCategoryReportData(products);
@@ -93,31 +93,40 @@ function exportProjectCategoryPdf(){
 
 async function exportQuotePdf(q,items){
  const filename=q.quote_number+'-HIS-Teklif.pdf';
- if(!window.html2pdf){toast('PDF motoru yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.','error');return;}
+ const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const popup=isIOS?window.open('about:blank','_blank'):null;
+ if(!window.html2pdf){
+   if(popup)popup.close();
+   toast('PDF kütüphanesi yüklenemedi. Sayfayı tamamen yenileyip tekrar deneyin.','error');
+   return;
+ }
  toast('PDF hazırlanıyor...');
  const box=document.createElement('div');
- box.style.cssText='position:fixed;left:-10000px;top:0;width:794px;padding:36px;font-family:Arial;color:#172033;background:#fff;box-sizing:border-box;z-index:-1';
- const rows=items.map((i,n)=>'<tr><td>'+ (n+1)+'</td><td><b>'+esc(i.product_name)+'</b><br><small>'+esc(i.product_code)+'</small></td><td>'+i.quantity+' '+esc(i.unit)+'</td><td style="text-align:right">'+money(i.unit_price,q.currency)+'</td><td style="text-align:right">'+money(i.line_total,q.currency)+'</td></tr>').join('');
- box.innerHTML='<div style="display:flex;justify-content:space-between;border-bottom:3px solid #1d4ed8;padding-bottom:18px"><div><h1 style="margin:0;color:#1d4ed8">HİS OTOMASYON</h1><p style="color:#666">Otomasyon • Pano • Havalandırma</p></div><div style="text-align:right"><h2 style="margin:0">FİYAT TEKLİFİ</h2><b>'+esc(q.quote_number)+'</b></div></div><div style="margin:24px 0;padding:16px;background:#f4f7fb"><b>SAYIN:</b><br><span style="font-size:18px">'+esc(q.customer_name)+'</span><br>Geçerlilik: '+(q.valid_until?new Date(q.valid_until).toLocaleDateString('tr-TR'):'-')+'</div><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#1d4ed8;color:#fff"><th>#</th><th>ÜRÜN / AÇIKLAMA</th><th>MİKTAR</th><th>BİRİM FİYAT</th><th>TOPLAM</th></tr></thead><tbody>'+rows+'</tbody></table><div style="margin-left:auto;width:45%;margin-top:22px"><p>Ara Toplam: <b style="float:right">'+money(q.subtotal,q.currency)+'</b></p><p>KDV: <b style="float:right">'+money(q.vat_total,q.currency)+'</b></p><div style="padding:12px;background:#172033;color:#fff"><b>GENEL TOPLAM</b><b style="float:right">'+money(q.grand_total,q.currency)+'</b></div></div><div style="margin-top:45px;border-top:1px solid #ddd;padding-top:14px;color:#666;font-size:10px"><b>Not:</b> '+esc(q.notes||'Fiyat teklifimiz belirtilen geçerlilik süresi boyunca geçerlidir.')+'</div>';
- box.querySelectorAll('th,td').forEach(x=>x.style.padding='9px');
- box.querySelectorAll('td').forEach(x=>x.style.borderBottom='1px solid #ddd');
+ box.style.cssText='position:fixed;left:-10000px;top:0;width:794px;padding:36px;font-family:Arial;color:#172033;background:#fff;box-sizing:border-box';
+ const rows=items.map((i,n)=>'<tr><td>'+ (n+1)+'</td><td><b>'+esc(i.product_name)+'</b><br><small>'+esc(i.product_code||'')+'</small></td><td>'+i.quantity+' '+esc(i.unit)+'</td><td>'+money(i.unit_price,q.currency)+'</td><td>'+money(i.line_total,q.currency)+'</td></tr>').join('');
+ box.innerHTML='<h1 style="margin:0;color:#173b66">HİS OTOMASYON</h1><h2>FİYAT TEKLİFİ</h2><p><b>Teklif No:</b> '+esc(q.quote_number)+'<br><b>Müşteri:</b> '+esc(q.customer_name)+'<br><b>Geçerlilik:</b> '+(q.valid_until||'-')+'</p><table style="width:100%;border-collapse:collapse"><thead><tr><th>#</th><th>ÜRÜN</th><th>MİKTAR</th><th>BİRİM FİYAT</th><th>TOPLAM</th></tr></thead><tbody>'+rows+'</tbody></table><h2 style="text-align:right;margin-top:25px">GENEL TOPLAM: '+money(q.grand_total,q.currency)+'</h2><p style="margin-top:35px">'+esc(q.notes||'')+'</p>';
+ box.querySelectorAll('th,td').forEach(x=>x.style.cssText='border:1px solid #bbb;padding:8px;text-align:left');
  document.body.appendChild(box);
  try{
-   const opts={margin:7,filename,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-   const worker=html2pdf().set(opts).from(box);
-   const blob=await worker.outputPdf('blob');
+   const worker=html2pdf().set({margin:7,filename,image:{type:'jpeg',quality:.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(box).toPdf();
+   const pdf=await worker.get('pdf');
+   const blob=pdf.output('blob');
    const url=URL.createObjectURL(blob);
-   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
    if(isIOS){
-     const w=window.open(url,'_blank');
-     if(!w){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();}
-     toast('PDF açıldı. iPhone paylaş menüsünden Dosyalara Kaydet seçebilirsiniz.');
+     if(popup) popup.location.href=url;
+     else window.location.href=url;
+     toast('PDF yeni sayfada açılıyor...');
    }else{
-     const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();toast('PDF indirildi.');
+     const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+     toast('PDF indirildi.');
    }
-   setTimeout(()=>URL.revokeObjectURL(url),60000);
- }catch(err){console.error(err);toast('PDF oluşturulamadı: '+(err.message||'Bilinmeyen hata'),'error');}
- finally{box.remove();}
+   setTimeout(()=>URL.revokeObjectURL(url),120000);
+ }catch(err){
+   console.error('PDF ERROR',err);
+   if(popup)popup.close();
+   alert('PDF oluşturulamadı: '+(err?.message||err));
+   toast('PDF hatası: '+(err?.message||'Bilinmeyen hata'),'error');
+ }finally{box.remove();}
 }
 
 async function approveQuote(id){if(!confirm('Teklif onaylanacak ve ürün miktarları stoktan düşülecek. Devam edilsin mi?'))return;const r=await sb.rpc('approve_stock_quote',{p_quote_id:id});if(r.error)return toast(r.error.message,'error');toast('Teklif onaylandı, stoklar düşüldü');await loadAll()}
@@ -149,6 +158,7 @@ document.addEventListener('click',async e=>{
  if(e.target.id==='newProductBtn')return openProduct();
  if(e.target.id==='newCustomerBtn')return openCustomer();
  if(e.target.id==='newQuoteBtn')return quoteModal();
+ if(e.target.id==='pdfQuote'){const q=state.quotes.find(x=>x.id===e.target.dataset.quoteId);const items=window.__quotePdfItems||[];if(!q)return alert('Teklif bilgisi bulunamadı.');return exportQuotePdf(q,items);}
  if(e.target.id==='modalClose')return closeModal();
  if(e.target.id==='excelImportBtn')return $('#excelFile').click();
  if(e.target.id==='excelExportBtn')return exportExcel();
