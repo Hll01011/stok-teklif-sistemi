@@ -92,72 +92,66 @@ function exportProjectCategoryPdf(){
  let grand=0;Object.entries(groups).forEach(([name,list])=>{const total=list.reduce((x,p)=>x+Number(p.sale_price||0)*Number(p.stock_quantity||0),0);grand+=total;body+='<h3 style="background:#eee;padding:10px">'+esc(name)+' — '+money(total)+'</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th>Ürün</th><th>Stok</th><th>Satış</th><th>Stok Değeri</th></tr></thead><tbody>'+list.map(p=>'<tr><td>'+esc(p.product_name)+'</td><td>'+p.stock_quantity+' '+esc(p.unit)+'</td><td>'+money(p.sale_price,p.currency)+'</td><td>'+money(Number(p.sale_price||0)*Number(p.stock_quantity||0),p.currency)+'</td></tr>').join('')+'</tbody></table>'});body+='<h2 style="text-align:right">TOPLAM STOK DEĞERİ: '+money(grand)+'</h2>';box.innerHTML=body;box.querySelectorAll('th,td').forEach(x=>x.style.cssText='border:1px solid #aaa;padding:7px;text-align:left');html2pdf().set({margin:7,filename:'HIS-Kategori-Raporu.pdf',html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(box).save()}
 
 async function exportQuotePdf(q,items){
- const filename=q.quote_number+'-HIS-Teklif.pdf';
- const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- const popup=isIOS?window.open('about:blank','_blank'):null;
- try{
-   const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
-   if(!JsPDF) throw new Error('PDF motoru yüklenemedi');
-   if(!items||!items.length) throw new Error('Teklif kalemi bulunamadı');
-   toast('PDF hazırlanıyor...');
-   const pdf=new JsPDF({unit:'mm',format:'a4',orientation:'portrait'});
-   const W=210, margin=15, right=195;
-   let y=18;
-   const tryFont=()=>{try{pdf.setFont('helvetica','normal')}catch(_){}};
-   tryFont();
-   pdf.setFontSize(20);pdf.setFont('helvetica','bold');pdf.text('HİS OTOMASYON',margin,y);y+=9;
-   pdf.setFontSize(13);pdf.text('FİYAT TEKLİFİ',margin,y);y+=8;
-   pdf.setDrawColor(25,59,102);pdf.setLineWidth(.8);pdf.line(margin,y,right,y);y+=8;
-   pdf.setFont('helvetica','normal');pdf.setFontSize(10);
-   pdf.text('Teklif No: '+String(q.quote_number||''),margin,y);y+=6;
-   pdf.text('Müşteri: '+String(q.customer_name||''),margin,y);y+=6;
-   pdf.text('Geçerlilik: '+String(q.valid_until||'-'),margin,y);y+=8;
-   const cols=[15,25,95,125,155,195];
-   const header=()=>{pdf.setFillColor(23,59,102);pdf.rect(15,y,180,8,'F');pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.text('#',17,y+5);pdf.text('ÜRÜN',27,y+5);pdf.text('MİKTAR',97,y+5);pdf.text('BİRİM FİYAT',127,y+5);pdf.text('TOPLAM',157,y+5);pdf.setTextColor(20,30,45);pdf.setFont('helvetica','normal');y+=8;};
-   header();
-   items.forEach((i,n)=>{
-     const product=String(i.product_name||'');
-     const code=String(i.product_code||'');
-     const wrapped=pdf.splitTextToSize(product,66);
-     const rowH=Math.max(10,wrapped.length*4+5);
-     if(y+rowH>270){pdf.addPage();y=18;header();}
-     pdf.setDrawColor(190,200,210);pdf.rect(15,y,180,rowH);
-     cols.slice(1,-1).forEach(x=>pdf.line(x,y,x,y+rowH));
-     pdf.setFontSize(8);
-     pdf.text(String(n+1),17,y+6);
-     pdf.setFont('helvetica','bold');pdf.text(wrapped,27,y+5);
-     pdf.setFont('helvetica','normal');
-     if(code){pdf.setFontSize(6.5);pdf.text(code,27,y+5+wrapped.length*4+1);}
-     pdf.setFontSize(8);
-     pdf.text(String(i.quantity||0)+' '+String(i.unit||''),97,y+6);
-     pdf.text(money(i.unit_price,q.currency),127,y+6);
-     pdf.text(money(i.line_total,q.currency),157,y+6);
-     y+=rowH;
-   });
-   y+=8;
-   if(y>265){pdf.addPage();y=25;}
-   pdf.setFont('helvetica','bold');pdf.setFontSize(13);
-   const total='GENEL TOPLAM: '+money(q.grand_total,q.currency);
-   pdf.text(total,right,y,{align:'right'});y+=10;
-   if(q.notes){pdf.setFont('helvetica','normal');pdf.setFontSize(9);const notes=pdf.splitTextToSize('Not: '+String(q.notes),180);pdf.text(notes,margin,y);}
-   const pageCount=pdf.getNumberOfPages();
-   for(let p=1;p<=pageCount;p++){pdf.setPage(p);pdf.setFontSize(7);pdf.setTextColor(110,110,110);pdf.text('HİS Otomasyon • Sayfa '+p+' / '+pageCount,105,290,{align:'center'});}
-   const blob=pdf.output('blob');
-   if(!blob||blob.size<500) throw new Error('PDF içeriği oluşturulamadı');
-   const url=URL.createObjectURL(blob);
-   if(isIOS){
-     if(popup) popup.location.replace(url); else window.location.assign(url);
-     toast('PDF açıldı. Paylaş menüsünden Dosyalara kaydedebilirsiniz.');
-   }else{
-     const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();toast('PDF indirildi.');
-   }
-   setTimeout(()=>URL.revokeObjectURL(url),120000);
- }catch(err){
-   console.error('PDF ERROR',err);
-   if(popup) popup.close();
-   alert('PDF oluşturulamadı: '+(err&&err.message?err.message:String(err)));
-   toast('PDF hatası: '+(err&&err.message?err.message:'Bilinmeyen hata'),'error');
- }
+  const filename=(q.quote_number||'teklif')+'-HIS-Teklif.pdf';
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  try{
+    const JsPDF=window.jspdf&&window.jspdf.jsPDF;
+    if(!JsPDF) throw new Error('PDF motoru yüklenmedi. İnternet bağlantısını kontrol edip sayfayı yenileyin.');
+    if(!Array.isArray(items)||items.length===0) throw new Error('Teklif kalemi bulunamadı.');
+    toast('PDF hazırlanıyor...');
+    const pdf=new JsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
+    const margin=15,right=195;
+    let y=18;
+    const text=v=>String(v??'').replace(/[ğĞüÜşŞıİöÖçÇ]/g,c=>({ğ:'g',Ğ:'G',ü:'u',Ü:'U',ş:'s',Ş:'S',ı:'i',İ:'I',ö:'o',Ö:'O',ç:'c',Ç:'C'}[c]));
+    pdf.setFont('helvetica','bold');pdf.setFontSize(20);pdf.text('HIS OTOMASYON',margin,y);y+=9;
+    pdf.setFontSize(13);pdf.text('FIYAT TEKLIFI',margin,y);y+=9;
+    pdf.setDrawColor(25,59,102);pdf.setLineWidth(.7);pdf.line(margin,y,right,y);y+=8;
+    pdf.setFont('helvetica','normal');pdf.setFontSize(9.5);
+    pdf.text('Teklif No: '+text(q.quote_number),margin,y);y+=6;
+    pdf.text('Musteri: '+text(q.customer_name),margin,y);y+=6;
+    pdf.text('Gecerlilik: '+text(q.valid_until||'-'),margin,y);y+=8;
+    const header=()=>{
+      pdf.setFillColor(25,59,102);pdf.rect(15,y,180,8,'F');
+      pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(8);
+      pdf.text('#',17,y+5);pdf.text('URUN',27,y+5);pdf.text('MIKTAR',105,y+5);pdf.text('BIRIM FIYAT',132,y+5);pdf.text('TOPLAM',165,y+5);
+      pdf.setTextColor(20,30,45);pdf.setFont('helvetica','normal');y+=8;
+    };
+    header();
+    items.forEach((i,n)=>{
+      const name=text(i.product_name||'');
+      const wrapped=pdf.splitTextToSize(name,72);
+      const rowH=Math.max(10,wrapped.length*4+5);
+      if(y+rowH>270){pdf.addPage();y=18;header();}
+      pdf.setDrawColor(190,200,210);pdf.rect(15,y,180,rowH);
+      [25,100,130,162].forEach(x=>pdf.line(x,y,x,y+rowH));
+      pdf.setFontSize(8);pdf.text(String(n+1),17,y+6);
+      pdf.setFont('helvetica','bold');pdf.text(wrapped,27,y+5);
+      pdf.setFont('helvetica','normal');pdf.text(String(i.quantity||0)+' '+text(i.unit||''),102,y+6);
+      pdf.text(money(i.unit_price,q.currency),132,y+6);
+      pdf.text(money(i.line_total,q.currency),164,y+6);
+      y+=rowH;
+    });
+    y+=9;if(y>265){pdf.addPage();y=24;}
+    pdf.setFont('helvetica','bold');pdf.setFontSize(13);
+    pdf.text('GENEL TOPLAM: '+money(q.grand_total,q.currency),right,y,{align:'right'});
+    if(q.notes){y+=9;pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.text(pdf.splitTextToSize('Not: '+text(q.notes),180),margin,y);}
+    const pages=pdf.getNumberOfPages();
+    for(let p=1;p<=pages;p++){pdf.setPage(p);pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(110,110,110);pdf.text('HIS Otomasyon - Sayfa '+p+' / '+pages,105,290,{align:'center'});}
+    if(isIOS){
+      const dataUri=pdf.output('datauristring');
+      if(!dataUri||dataUri.length<1000) throw new Error('PDF verisi olusturulamadi.');
+      const win=window.open('', '_blank');
+      if(win){win.location.href=dataUri;}else{window.location.href=dataUri;}
+      toast('PDF yeni sekmede acildi.');
+    }else{
+      pdf.save(filename);
+      toast('PDF indirildi.');
+    }
+  }catch(err){
+    console.error('PDF ERROR',err);
+    toast('PDF hatasi: '+(err?.message||'Bilinmeyen hata'),'error');
+    alert('PDF olusturulamadi: '+(err?.message||String(err)));
+  }
 }
 
 async function approveQuote(id){if(!confirm('Teklif onaylanacak ve ürün miktarları stoktan düşülecek. Devam edilsin mi?'))return;const r=await sb.rpc('approve_stock_quote',{p_quote_id:id});if(r.error)return toast(r.error.message,'error');toast('Teklif onaylandı, stoklar düşüldü');await loadAll()}
