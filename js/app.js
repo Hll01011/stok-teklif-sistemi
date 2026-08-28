@@ -70,7 +70,19 @@ function quoteModal(seed=[]){
  $('#cancelModal').onclick=closeModal;$('#addQuoteItem').onclick=()=>{const id=$('#quoteProductAdd').value,p=state.products.find(x=>x.id===id);if(!p)return;state.quoteItems.push({product_id:p.id,product_code:p.product_code,product_name:p.product_name,category_id:p.category_id||null,category_name:p.stock_categories?.name||'Diğer',purchase_unit_price:Number(p.purchase_price||0),unit:p.unit,quantity:1,unit_price:Number(p.sale_price),vat_rate:20,currency:p.currency});renderQuoteItems()};
  $('#saveQuote').onclick=saveQuote;renderQuoteItems();
 }
-function renderQuoteItems(){const el=$('#quoteItems');if(!el)return;el.innerHTML='<div class="quote-lines">'+state.quoteItems.map((i,n)=>'<div class="quote-line"><div><b>'+esc(i.product_name)+'</b><small class="muted">'+esc(i.category_name||'Diğer')+'</small></div><span>'+esc(i.unit)+'</span><input type="number" step="0.001" value="'+i.quantity+'" data-q-qty="'+n+'"><input type="number" step="0.01" value="'+i.unit_price+'" data-q-price="'+n+'"><button class="ghost" data-q-del="'+n+'">×</button></div>').join('')+'</div>'}
+function quoteAnalysis(items){
+ const groups={};let total=0,cost=0;
+ items.forEach(i=>{const net=Number(i.quantity||0)*Number(i.unit_price||0),c=Number(i.quantity||0)*Number(i.purchase_unit_price||i.stock_products?.purchase_price||0);const name=i.category_name||i.stock_categories?.name||'Diğer';if(!groups[name])groups[name]={name,net:0,cost:0,count:0};groups[name].net+=net;groups[name].cost+=c;groups[name].count++;total+=net;cost+=c});
+ const categories=Object.values(groups).sort((a,b)=>b.net-a.net).map(x=>({...x,share:total?x.net/total*100:0}));
+ return {total,cost,profit:total-cost,categories,top:categories[0]||null};
+}
+function renderQuoteItems(){
+ const el=$('#quoteItems');if(!el)return;
+ const a=quoteAnalysis(state.quoteItems);
+ el.innerHTML='<div class="quote-lines">'+state.quoteItems.map((i,n)=>'<div class="quote-line"><div><b>'+esc(i.product_name)+'</b><small class="muted">'+esc(i.category_name||'Diğer')+'</small></div><span>'+esc(i.unit)+'</span><input type="number" step="0.001" value="'+i.quantity+'" data-q-qty="'+n+'"><input type="number" step="0.01" value="'+i.unit_price+'" data-q-price="'+n+'"><button class="ghost" data-q-del="'+n+'">×</button></div>').join('')+'</div>'+
+ '<div class="quote-live-summary"><div><span>ARA TOPLAM</span><strong>'+money(a.total,state.quoteItems[0]?.currency||'TRY')+'</strong></div><div><span>KATEGORİ</span><strong>'+a.categories.length+'</strong></div><div><span>EN BÜYÜK DİLİM</span><strong>'+esc(a.top?.name||'-')+' '+(a.top?a.top.share.toFixed(1)+'%':'')+'</strong></div></div>'+
+ '<div class="mini-distribution">'+a.categories.map(c=>'<div class="mini-dist-row"><div class="mini-dist-head"><span>'+esc(c.name)+'</span><b>'+c.share.toFixed(1)+'%</b></div><div class="mini-bar"><i style="width:'+Math.min(100,c.share)+'%"></i></div></div>').join('')+'</div>';
+}
 async function saveQuote(){
  if(!state.quoteItems.length)return toast('En az bir ürün ekleyin','error');
  const customerId=$('#quoteCustomer').value,customer=state.customers.find(c=>c.id===customerId);if(!customer)return toast('Müşteri seçin','error');
@@ -83,7 +95,25 @@ async function saveQuote(){
  const r2=await sb.from('stock_quote_items').insert(lines);if(r2.error)return toast(r2.error.message,'error');
  closeModal();toast('Teklif oluşturuldu');await loadAll();showPage('quotes');
 }
-async function viewQuote(id){const q=state.quotes.find(x=>x.id===id),r=await sb.from('stock_quote_items').select('*,stock_products(purchase_price,stock_categories(name))').eq('quote_id',id).order('created_at');if(r.error)return toast(r.error.message,'error');window.__quotePdfItems=r.data||[];openModal('<h2>'+esc(q.quote_number)+'</h2><p><b>'+esc(q.customer_name)+'</b> • '+q.status+'</p><div class="panel table-panel"><table><thead><tr><th>Ürün</th><th>Miktar</th><th>Birim fiyat</th><th>Toplam</th></tr></thead><tbody>'+r.data.map(i=>'<tr><td>'+esc(i.product_name)+'</td><td>'+i.quantity+' '+esc(i.unit)+'</td><td>'+money(i.unit_price,q.currency)+'</td><td>'+money(i.line_total,q.currency)+'</td></tr>').join('')+'</tbody></table></div><h3>Genel toplam: '+money(q.grand_total,q.currency)+'</h3><div class="form-actions"><button class="secondary" id="pdfQuote">PDF oluştur</button><button class="primary" id="closeQuote">Kapat</button></div>');$('#closeQuote').onclick=closeModal;const pdfBtn=$('#pdfQuote');if(pdfBtn)pdfBtn.onclick=()=>{try{if(!(window.jspdf&&window.jspdf.jsPDF))return toast('PDF motoru yüklenemedi. Sayfayı yenileyin.','error');exportQuotePdf(q,r.data)}catch(err){console.error(err);toast('PDF oluşturulurken hata oluştu: '+err.message,'error')}}}
+async function viewQuote(id){
+ const q=state.quotes.find(x=>x.id===id);
+ const r=await sb.from('stock_quote_items').select('*,stock_products(purchase_price,stock_quantity,stock_categories(name))').eq('quote_id',id).order('created_at');
+ if(r.error)return toast(r.error.message,'error');
+ const items=r.data||[];window.__quotePdfItems=items;
+ const a=quoteAnalysis(items.map(i=>({...i,purchase_unit_price:i.purchase_unit_price||i.stock_products?.purchase_price||0})));
+ const stockOk=items.filter(i=>Number(i.stock_products?.stock_quantity||0)>=Number(i.quantity||0)).length;
+ const categoryCards=a.categories.map(c=>'<div class="analysis-category"><div class="analysis-cat-top"><b>'+esc(c.name)+'</b><strong>'+c.share.toFixed(1)+'%</strong></div><div class="analysis-bar"><i style="width:'+Math.min(100,c.share)+'%"></i></div><small>'+money(c.net,q.currency)+' • '+c.count+' kalem</small></div>').join('');
+ openModal(
+ '<div class="quote-presentation">'+
+ '<div class="quote-hero"><div><span class="eyebrow">PROJE TEKLİFİ</span><h2>'+esc(q.quote_number)+'</h2><p><b>'+esc(q.customer_name)+'</b> • '+(q.status==='APPROVED'?'ONAYLANDI':q.status==='SENT'?'MÜŞTERİDE':'HAZIRLANIYOR')+'</p></div><div class="quote-total-badge"><span>GENEL TOPLAM</span><strong>'+money(q.grand_total,q.currency)+'</strong></div></div>'+
+ '<div class="impact-grid"><div><span>ÜRÜN KALEMİ</span><strong>'+items.length+'</strong><small>Teklifte yer alan malzeme</small></div><div><span>KATEGORİ</span><strong>'+a.categories.length+'</strong><small>Otomatik finansal dağılım</small></div><div><span>EN BÜYÜK DİLİM</span><strong>'+esc(a.top?.name||'-')+'</strong><small>'+(a.top?a.top.share.toFixed(1)+'% pay':'-')+'</small></div><div><span>STOK UYGUNLUĞU</span><strong>'+stockOk+'/'+items.length+'</strong><small>Kalem stok kontrolü</small></div></div>'+
+ '<div class="presentation-section"><div class="section-title"><div><span class="eyebrow">FİNANSAL DAĞILIM</span><h3>Teklif bütçesi nereye gidiyor?</h3></div><span class="muted">Her yeni teklifte otomatik hesaplanır</span></div><div class="analysis-list">'+categoryCards+'</div></div>'+
+ '<div class="presentation-section"><div class="section-title"><div><span class="eyebrow">DETAYLI MALZEME LİSTESİ</span><h3>Teklif kalemleri</h3></div></div><div class="table-scroll"><table><thead><tr><th>ÜRÜN</th><th>KATEGORİ</th><th>MİKTAR</th><th>BİRİM FİYAT</th><th>TOPLAM</th></tr></thead><tbody>'+items.map(i=>'<tr><td><b>'+esc(i.product_name)+'</b></td><td>'+esc(i.category_name||i.stock_products?.stock_categories?.name||'Diğer')+'</td><td>'+i.quantity+' '+esc(i.unit)+'</td><td>'+money(i.unit_price,q.currency)+'</td><td>'+money(i.line_total,q.currency)+'</td></tr>').join('')+'</tbody></table></div></div>'+
+ '<div class="quote-footer-actions"><div class="quote-finance-note"><span>Teklif özeti</span><b>'+items.length+' kalem • '+a.categories.length+' kategori • '+money(q.grand_total,q.currency)+'</b></div><div class="form-actions"><button class="secondary" id="pdfQuote">Profesyonel PDF</button><button class="primary" id="closeQuote">Kapat</button></div></div>'+
+ '</div>');
+ $('#closeQuote').onclick=closeModal;
+ const pdfBtn=$('#pdfQuote');if(pdfBtn)pdfBtn.onclick=()=>{try{if(!(window.jspdf&&window.jspdf.jsPDF))return toast('PDF motoru yüklenemedi. Sayfayı yenileyin.','error');exportQuotePdf(q,items)}catch(err){console.error(err);toast('PDF oluşturulurken hata oluştu: '+err.message,'error')}};
+}
 function buildCategoryReportData(items){const groups={};items.forEach(i=>{const k=i.stock_categories?.name||i.category_name||'Diğer';(groups[k]??=[]).push(i)});return groups}
 function exportProjectCategoryPdf(){
  const products=state.products;const groups=buildCategoryReportData(products);
@@ -249,6 +279,6 @@ document.addEventListener('click',async e=>{
  const ap=e.target.closest('[data-approve-quote]');if(ap)return approveQuote(ap.dataset.approveQuote);
  const del=e.target.closest('[data-q-del]');if(del){state.quoteItems.splice(Number(del.dataset.qDel),1);renderQuoteItems()}
 });
-$('#stockSearch').addEventListener('input',renderStocks);$('#stockCategoryFilter').addEventListener('change',renderStocks);
+$('#stockSearch').addEventListener('input',renderStocks);document.addEventListener('input',e=>{if(e.target.matches('[data-q-qty],[data-q-price]')){const n=Number(e.target.dataset.qQty??e.target.dataset.qPrice);if(Number.isFinite(n)&&state.quoteItems[n]){if(e.target.dataset.qQty!==undefined)state.quoteItems[n].quantity=Number(e.target.value||0);else state.quoteItems[n].unit_price=Number(e.target.value||0);renderQuoteItems()}}});$('#stockCategoryFilter').addEventListener('change',renderStocks);
 $('#excelFile').addEventListener('change',async e=>{if(e.target.files[0])try{await importExcel(e.target.files[0])}catch(err){toast(err.message||'Excel okunamadı','error')}e.target.value=''});
 (async()=>{try{await loadAll();toast('Şifresiz stok ve teklif sistemi hazır')}catch(err){console.error(err);toast('Bağlantı hatası: '+(err.message||err),'error')}})();
