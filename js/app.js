@@ -122,118 +122,65 @@ function exportProjectCategoryPdf(){
  let grand=0;Object.entries(groups).forEach(([name,list])=>{const total=list.reduce((x,p)=>x+Number(p.sale_price||0)*Number(p.stock_quantity||0),0);grand+=total;body+='<h3 style="background:#eee;padding:10px">'+esc(name)+' — '+money(total)+'</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th>Ürün</th><th>Stok</th><th>Satış</th><th>Stok Değeri</th></tr></thead><tbody>'+list.map(p=>'<tr><td>'+esc(p.product_name)+'</td><td>'+p.stock_quantity+' '+esc(p.unit)+'</td><td>'+money(p.sale_price,p.currency)+'</td><td>'+money(Number(p.sale_price||0)*Number(p.stock_quantity||0),p.currency)+'</td></tr>').join('')+'</tbody></table>'});body+='<h2 style="text-align:right">TOPLAM STOK DEĞERİ: '+money(grand)+'</h2>';box.innerHTML=body;box.querySelectorAll('th,td').forEach(x=>x.style.cssText='border:1px solid #aaa;padding:7px;text-align:left');html2pdf().set({margin:7,filename:'HIS-Kategori-Raporu.pdf',html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(box).save()}
 
 async function exportQuotePdf(q,items){
-  const filename=(q.quote_number||'teklif')+'-HIS-Teklif.pdf';
-  try{
-    const JsPDF=window.jspdf&&window.jspdf.jsPDF;
-    if(!JsPDF) throw new Error('PDF motoru yüklenmedi. Sayfayı yenileyin.');
-    if(!Array.isArray(items)||!items.length) throw new Error('Teklif kalemi bulunamadı.');
-    toast('Kategori ve finans raporlu PDF hazırlanıyor...');
-
-    const pdf=new JsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
-    const L=12,R=198,W=186,B=286;
-    let y=17;
-    const tr=v=>String(v??'').replace(/[ğĞüÜşŞıİöÖçÇ]/g,c=>({ğ:'g',Ğ:'G',ü:'u',Ü:'U',ş:'s',Ş:'S',ı:'i',İ:'I',ö:'o',Ö:'O',ç:'c',Ç:'C'}[c]));
-    const fmt=v=>new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0))+' '+(q.currency||'TRY');
-    const catOf=i=>i.category_name||i.stock_products?.stock_categories?.name||'Diğer';
-    const costOf=i=>Number(i.purchase_unit_price??i.stock_products?.purchase_price??0);
-    const groups={};
-    items.forEach(i=>{const k=catOf(i);(groups[k]||(groups[k]=[])).push(i);});
-
-    const title=()=>{
-      pdf.setTextColor(20,35,55);pdf.setFont('helvetica','bold');pdf.setFontSize(19);pdf.text('HIS OTOMASYON',L,y);y+=8;
-      pdf.setFontSize(12);pdf.text('DETAYLI FIYAT TEKLIFI',L,y);y+=6;
-      pdf.setDrawColor(28,67,110);pdf.setLineWidth(.8);pdf.line(L,y,R,y);y+=7;
-      pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);
-      pdf.text('Teklif No: '+tr(q.quote_number),L,y);pdf.text('Tarih: '+tr(q.quote_date||new Date().toISOString().slice(0,10)),110,y);y+=5;
-      pdf.text('Musteri: '+tr(q.customer_name),L,y);pdf.text('Gecerlilik: '+tr(q.valid_until||'-'),110,y);y+=8;
-    };
-    const pageHeader=()=>{pdf.setFillColor(28,67,110);pdf.rect(L,y,W,7,'F');pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);
-      pdf.text('#',L+2,y+4.7);pdf.text('URUN / MALZEME',L+11,y+4.7);pdf.text('MIKTAR',L+100,y+4.7);pdf.text('BIRIM FIYAT',L+124,y+4.7);pdf.text('TUTAR',L+159,y+4.7);
-      pdf.setTextColor(20,35,55);pdf.setFont('helvetica','normal');y+=7;
-    };
-    const newPage=()=>{pdf.addPage();y=15;title();};
-
-    title();
-    let totalNet=0,totalVat=0,totalGross=0,totalCost=0;
-    const categorySummary=[];
-
-    Object.entries(groups).forEach(([category,list],catIndex)=>{
-      const catNet=list.reduce((s,i)=>s+Number(i.quantity||0)*Number(i.unit_price||0),0);
-      const catVat=list.reduce((s,i)=>s+Number(i.quantity||0)*Number(i.unit_price||0)*Number(i.vat_rate||0)/100,0);
-      const catGross=catNet+catVat;
-      const catCost=list.reduce((s,i)=>s+Number(i.quantity||0)*costOf(i),0);
-      totalNet+=catNet;totalVat+=catVat;totalGross+=catGross;totalCost+=catCost;
-
-      if(y+14>B)newPage();
-      pdf.setFillColor(232,240,248);pdf.rect(L,y,W,8,'F');
-      pdf.setFont('helvetica','bold');pdf.setFontSize(9.5);pdf.text('KATEGORI '+(catIndex+1)+': '+tr(category).toUpperCase(),L+3,y+5.3);
-      pdf.text(fmt(catGross),R-3,y+5.3,{align:'right'});y+=8;
-      pageHeader();
-
-      list.forEach((i,n)=>{
-        const name=tr(i.product_name||'');
-        const wrapped=pdf.splitTextToSize(name,82);
-        const rowH=Math.max(8,wrapped.length*3.7+3);
-        if(y+rowH>B){newPage();pageHeader();}
-        pdf.setDrawColor(205,214,223);pdf.rect(L,y,W,rowH);
-        [L+9,L+97,L+121,L+156].forEach(x=>pdf.line(x,y,x,y+rowH));
-        pdf.setFontSize(7.5);pdf.text(String(n+1),L+3,y+5);
-        pdf.setFont('helvetica','bold');pdf.text(wrapped,L+11,y+4.7);
-        pdf.setFont('helvetica','normal');pdf.text(String(i.quantity||0)+' '+tr(i.unit||''),L+99,y+5);
-        pdf.text(fmt(i.unit_price),L+123,y+5);
-        pdf.text(fmt(Number(i.quantity||0)*Number(i.unit_price||0)),L+158,y+5);
-        y+=rowH;
-      });
-
-      if(y+10>B)newPage();
-      pdf.setFillColor(247,249,251);pdf.rect(L,y,W,7,'F');
-      pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);
-      pdf.text(tr(category)+' ara toplam (KDV dahil):',L+3,y+4.7);
-      pdf.text(fmt(catGross),R-3,y+4.7,{align:'right'});y+=9;
-      categorySummary.push({category,net:catNet,vat:catVat,gross:catGross,cost:catCost,profit:catNet-catCost});
-    });
-
-    // Financial category slices page
-    if(y>205){pdf.addPage();y=18;} else y+=4;
-    pdf.setFont('helvetica','bold');pdf.setFontSize(13);pdf.text('KATEGORILERE GORE FINANSAL DAGILIM',L,y);y+=7;
-    const financeHeader=()=>{pdf.setFillColor(28,67,110);pdf.rect(L,y,W,8,'F');pdf.setTextColor(255,255,255);pdf.setFontSize(6.8);
-      pdf.text('KATEGORI',L+2,y+5);pdf.text('NET',L+65,y+5);pdf.text('MALIYET',L+92,y+5);pdf.text('KAR',L+121,y+5);pdf.text('PAY',L+151,y+5);pdf.text('KDV DAHIL',L+164,y+5);
-      pdf.setTextColor(20,35,55);y+=8;};
-    financeHeader();
-    categorySummary.forEach(s=>{
-      if(y+9>B){pdf.addPage();y=18;pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.text('FINANSAL DAGILIM (DEVAM)',L,y);y+=7;financeHeader();}
-      const share=totalNet?100*s.net/totalNet:0;
-      pdf.setDrawColor(205,214,223);pdf.rect(L,y,W,8);
-      [L+63,L+90,L+119,L+149,L+162].forEach(x=>pdf.line(x,y,x,y+8));
-      pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.text(pdf.splitTextToSize(tr(s.category),58),L+2,y+4.8);
-      pdf.setFont('helvetica','normal');pdf.text(fmt(s.net),L+64,y+4.8);pdf.text(fmt(s.cost),L+91,y+4.8);pdf.text(fmt(s.profit),L+120,y+4.8);pdf.text(share.toFixed(1)+'%',L+150,y+4.8);pdf.text(fmt(s.gross),L+163,y+4.8);
-      y+=8;
-    });
-    y+=5;
-    if(y+42>B){pdf.addPage();y=20;}
-    pdf.setFillColor(238,244,249);pdf.rect(L,y,W,37,'F');
-    pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.text('TEKLIF FINANSAL OZETI',L+4,y+7);
-    pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);
-    const sums=[
-      ['Net malzeme toplami',totalNet],
-      ['Toplam maliyet',totalCost],
-      ['Brut kar',totalNet-totalCost],
-      ['KDV toplami',totalVat],
-      ['GENEL TOPLAM (KDV DAHIL)',totalGross]
-    ];
-    sums.forEach((s,idx)=>{const yy=y+13+idx*5;pdf.setFont('helvetica',idx===4?'bold':'normal');pdf.text(s[0],L+5,yy);pdf.text(fmt(s[1]),R-5,yy,{align:'right'});});
-    y+=44;
-    if(q.notes){pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text(pdf.splitTextToSize('Not: '+tr(q.notes),W),L,y);}
-
-    const pages=pdf.getNumberOfPages();
-    for(let p=1;p<=pages;p++){pdf.setPage(p);pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(110,110,110);pdf.text('HIS Otomasyon | '+tr(q.quote_number)+' | Sayfa '+p+' / '+pages,105,291,{align:'center'});}
-    pdf.save(filename);
-    toast('Kategori ve finansal dilimleri içeren PDF indirildi.');
-  }catch(err){
-    console.error('PDF ERROR',err);
-    toast('PDF hatasi: '+(err?.message||'Bilinmeyen hata'),'error');
-    alert('PDF olusturulamadi: '+(err?.message||String(err)));
-  }
+ const filename=(q.quote_number||'teklif')+'-HIS-Proje-Teklifi.pdf';
+ try{
+  const JsPDF=window.jspdf&&window.jspdf.jsPDF;if(!JsPDF)throw new Error('PDF motoru yüklenmedi');
+  const pdf=new JsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true}),L=12,R=198,W=186;
+  const fmt=v=>new Intl.NumberFormat('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(v||0))+' TL';
+  const clean=v=>String(v??'').replace(/[ğĞüÜşŞıİöÖçÇ]/g,c=>({ğ:'g',Ğ:'G',ü:'u',Ü:'U',ş:'s',Ş:'S',ı:'i',İ:'I',ö:'o',Ö:'O',ç:'c',Ç:'C'}[c]));
+  const cat=i=>i.category_name||i.stock_products?.stock_categories?.name||'Diğer';
+  const groups={};items.forEach(i=>{const k=cat(i);(groups[k]??=[]).push(i)});
+  const analysis=quoteAnalysis(items.map(i=>({...i,purchase_unit_price:i.purchase_unit_price||i.stock_products?.purchase_price||0})));
+  const totalGross=analysis.total+items.reduce((s,i)=>s+Number(i.quantity||0)*Number(i.unit_price||0)*Number(i.vat_rate||0)/100,0);
+  let y=18;
+  // Cover / executive summary
+  pdf.setFillColor(13,35,57);pdf.rect(0,0,210,297,'F');
+  pdf.setTextColor(92,230,180);pdf.setFont('helvetica','bold');pdf.setFontSize(13);pdf.text('HIS OTOMASYON',L,32);
+  pdf.setTextColor(255,255,255);pdf.setFontSize(28);pdf.text('PROJE',L,55);pdf.text('FIYAT TEKLIFI',L,68);
+  pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.text(clean(q.customer_name||''),L,88);
+  pdf.setFontSize(8);pdf.setTextColor(190,205,218);pdf.text('Teklif No: '+clean(q.quote_number),L,99);pdf.text('Teklif Tarihi: '+clean(q.quote_date||new Date().toISOString().slice(0,10)),L,105);pdf.text('Gecerlilik: '+clean(q.valid_until||'-'),L,111);
+  pdf.setFillColor(255,255,255);pdf.roundedRect(L,145,186,42,4,4,'F');
+  pdf.setTextColor(13,35,57);pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.text('TOPLAM PROJE BEDELI',L+8,157);pdf.setFontSize(22);pdf.text(fmt(totalGross),L+8,172);
+  pdf.setFontSize(8);pdf.setFont('helvetica','normal');pdf.text(items.length+' malzeme kalemi  •  '+analysis.categories.length+' ana kategori  •  Otomatik finansal analiz',L+8,181);
+  pdf.setTextColor(170,190,205);pdf.setFontSize(7);pdf.text('HIS Otomasyon | Endüstriyel Kümes Sistemleri ve Otomasyon Çözümleri',L,275);
+  pdf.addPage();y=18;
+  // Financial distribution page
+  pdf.setTextColor(13,35,57);pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.text('FINANSAL DAGILIM VE PROJE OZETI',L,y);y+=11;
+  pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(90,105,120);pdf.text('Bu analiz teklif içeriğine göre otomatik hesaplanmıştır.',L,y);y+=10;
+  const max=Math.max(...analysis.categories.map(x=>x.share),1);
+  analysis.categories.forEach((c,idx)=>{
+   if(y>245){pdf.addPage();y=18;}
+   pdf.setTextColor(13,35,57);pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.text(clean(c.name),L,y);
+   pdf.text(c.share.toFixed(1)+'%',R,y,{align:'right'});y+=4;
+   pdf.setFillColor(229,236,241);pdf.roundedRect(L,y,W,6,3,3,'F');
+   pdf.setFillColor(28+idx*7%90,110+idx*9%90,150+idx*5%80);pdf.roundedRect(L,y,Math.max(4,W*c.share/100),6,3,3,'F');
+   pdf.setTextColor(80,95,110);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);y+=10;
+   pdf.text(fmt(c.net)+' net  |  '+c.count+' kalem',L,y);y+=6;
+  });
+  y+=4;pdf.setFillColor(240,245,248);pdf.roundedRect(L,y,W,35,3,3,'F');pdf.setTextColor(13,35,57);pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.text('YONETICI OZETI',L+6,y+8);
+  const profit=analysis.profit,margin=analysis.total?profit/analysis.total*100:0;
+  pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text('Net teklif: '+fmt(analysis.total),L+6,y+16);pdf.text('KDV: '+fmt(totalGross-analysis.total),L+6,y+22);pdf.text('Kategori sayısı: '+analysis.categories.length+'   |   Malzeme kalemi: '+items.length,L+6,y+28);
+  pdf.setFont('helvetica','bold');pdf.text('Genel toplam: '+fmt(totalGross),L+6,y+34);
+  // Category detail pages
+  Object.entries(groups).forEach(([name,list],ci)=>{
+   pdf.addPage();y=17;pdf.setTextColor(13,35,57);pdf.setFont('helvetica','bold');pdf.setFontSize(15);pdf.text((ci+1)+'. '+clean(name).toUpperCase(),L,y);y+=8;
+   const s=analysis.categories.find(x=>x.name===name);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(90,105,120);pdf.text('Kategori finansal payı: '+(s?s.share.toFixed(1):'0.0')+'%  |  Net toplam: '+fmt(s?.net||0),L,y);y+=8;
+   const header=()=>{pdf.setFillColor(18,59,91);pdf.rect(L,y,W,7,'F');pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(7);[['#',2],['URUN / MALZEME',10],['MIKTAR',103],['BIRIM FIYAT',128],['TOPLAM',160]].forEach(a=>pdf.text(a[0],L+a[1],y+4.7));pdf.setTextColor(13,35,57);y+=7;};header();
+   let catSum=0;
+   list.forEach((i,n)=>{const nameLines=pdf.splitTextToSize(clean(i.product_name||''),86),h=Math.max(8,nameLines.length*3.5+3);if(y+h>280){pdf.addPage();y=17;header();}
+    const line=Number(i.quantity||0)*Number(i.unit_price||0);catSum+=line;
+    pdf.setDrawColor(215,222,228);pdf.rect(L,y,W,h);[L+8,L+100,L+125,L+157].forEach(x=>pdf.line(x,y,x,y+h));
+    pdf.setFontSize(7);pdf.setFont('helvetica','normal');pdf.text(String(n+1),L+2,y+5);pdf.setFont('helvetica','bold');pdf.text(nameLines,L+10,y+4.7);pdf.setFont('helvetica','normal');pdf.text(String(i.quantity||0)+' '+clean(i.unit||''),L+102,y+5);pdf.text(fmt(i.unit_price),L+127,y+5);pdf.text(fmt(line),L+159,y+5);y+=h;
+   });
+   y+=5;pdf.setFillColor(240,245,248);pdf.rect(L,y,W,8,'F');pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.text(clean(name)+' kategori net toplamı',L+3,y+5);pdf.text(fmt(catSum),R-3,y+5,{align:'right'});
+  });
+  // final total
+  pdf.addPage();y=25;pdf.setTextColor(13,35,57);pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.text('GENEL FINANSAL OZET',L,y);y+=14;
+  [['Net Malzeme / Teklif Toplamı',analysis.total],['Toplam KDV',totalGross-analysis.total],['GENEL TOPLAM',totalGross]].forEach((r,n)=>{pdf.setFillColor(n===2?13:240,n===2?35:245,n===2?57:248);pdf.roundedRect(L,y,W,18,3,3,'F');pdf.setTextColor(n===2?255:13,n===2?255:35,n===2?255:57);pdf.setFontSize(9);pdf.text(r[0],L+6,y+7);pdf.setFontSize(13);pdf.text(fmt(r[1]),R-6,y+13,{align:'right'});y+=23;});
+  pdf.setTextColor(90,105,120);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text('Teklifteki tüm kategori yüzdeleri ve finansal dilimler ürün, miktar ve fiyat değiştikçe otomatik olarak yeniden hesaplanır.',L,y+8,{maxWidth:W});
+  const pages=pdf.getNumberOfPages();for(let p=1;p<=pages;p++){pdf.setPage(p);pdf.setTextColor(120,130,140);pdf.setFontSize(7);pdf.text('HIS Otomasyon  |  '+clean(q.quote_number)+'  |  Sayfa '+p+' / '+pages,105,291,{align:'center'});}
+  pdf.save(filename);toast('Yeni finansal dilimli profesyonel PDF indirildi.');
+ }catch(err){console.error(err);toast('PDF hatası: '+(err.message||err),'error');}
 }
 
 async function approveQuote(id){if(!confirm('Teklif onaylanacak ve ürün miktarları stoktan düşülecek. Devam edilsin mi?'))return;const r=await sb.rpc('approve_stock_quote',{p_quote_id:id});if(r.error)return toast(r.error.message,'error');toast('Teklif onaylandı, stoklar düşüldü');await loadAll()}
