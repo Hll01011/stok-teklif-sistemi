@@ -188,6 +188,27 @@ async function addToQuote(id){const p=state.products.find(x=>x.id===id);const ra
 
 async function importExcel(file){const data=await file.arrayBuffer(),wb=XLSX.read(data),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});let added=0;for(const x of rows){const name=x['Ürün']||x['ÜRÜN']||x['product_name'];if(!name)continue;let catName=x['Kategori']||x['KATEGORİ']||'Genel',cat=state.categories.find(c=>c.name.toLowerCase()===String(catName).toLowerCase());if(!cat){const r=await sb.from('stock_categories').insert({name:String(catName)}).select().single();if(r.error)throw r.error;cat=r.data;state.categories.push(cat)}const row={product_code:String(x['Kod']||x['KOD']||x['product_code']||('PRD-'+Date.now()+added)),product_name:String(name),category_id:cat.id,unit:String(x['Birim']||x['BİRİM']||'adet'),stock_quantity:0,critical_stock_level:Number(x['Kritik']||0),purchase_price:Number(x['Alış']||x['ALIŞ']||0),sale_price:Number(x['Satış']||x['SATIŞ']||0),currency:String(x['Kur']||x['KUR']||'TRY')};const stock=Number(x['Stok']||x['STOK']||0);const r=await sb.from('stock_products').insert(row).select().single();if(r.error)continue;if(stock>0)await sb.rpc('apply_stock_movement',{p_product_id:r.data.id,p_movement_type:'IN',p_quantity:stock,p_unit_price:row.purchase_price,p_currency:row.currency,p_description:'Excel ilk stok'});added++}toast(added+' ürün içe aktarıldı');await loadAll()}
 
+async function addSelectedToStock(){
+ const ids=$('.product-check:checked').map(x=>x.value);
+ if(!ids.length)return toast('Önce stok tablosundan en az bir ürün seçin.','error');
+ const selected=state.products.filter(p=>ids.includes(p.id));
+ const rows=selected.map((p,n)=>'<tr><td><b>'+esc(p.product_code)+'</b><br><small>'+esc(p.product_name)+'</small></td><td>'+esc(p.unit)+'</td><td><input type="number" step="0.001" min="0.001" data-stock-add-qty="'+n+'" value="1"></td></tr>').join('');
+ openModal('<h2>Seçilenleri Stoğa Ekle</h2><p class="muted">Her ürün için eklenecek miktarı girin. Mevcut stok miktarının üzerine eklenir ve hareket kaydı oluşturulur.</p><div class="table-scroll"><table><thead><tr><th>ÜRÜN</th><th>BİRİM</th><th>EKLENECEK MİKTAR</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="form-actions"><button class="ghost" id="cancelModal">Vazgeç</button><button class="primary" id="confirmAddSelectedStock">Stoğa Ekle</button></div>');
+ $('#cancelModal').onclick=closeModal;
+ $('#confirmAddSelectedStock').onclick=async()=>{
+   const btn=$('#confirmAddSelectedStock');btn.disabled=true;btn.textContent='Ekleniyor...';
+   try{
+    for(let n=0;n<selected.length;n++){
+      const p=selected[n],qty=Number(document.querySelector('[data-stock-add-qty="'+n+'"]').value||0);
+      if(!Number.isFinite(qty)||qty<=0)continue;
+      const r=await sb.rpc('apply_stock_movement',{p_product_id:p.id,p_movement_type:'IN',p_quantity:qty,p_unit_price:Number(p.purchase_price||0),p_currency:p.currency||'TRY',p_description:'Toplu seçili ürün stok girişi'});
+      if(r.error)throw r.error;
+    }
+    closeModal();toast(selected.length+' seçili ürün için stok girişi işlendi.');await loadAll();
+   }catch(err){console.error(err);toast(err.message||'Stok girişi yapılamadı','error');btn.disabled=false;btn.textContent='Stoğa Ekle';}
+ };
+}
+
 function openCategory(){
  openModal('<h2>Yeni kategori</h2><form id="categoryForm"><label>Kategori adı<input name="name" required placeholder="Örn: Pano, Havalandırma"></label><div class="form-actions"><button type="button" class="ghost" id="cancelModal">Vazgeç</button><button class="primary">Kaydet</button></div></form>');
  $('#cancelModal').onclick=closeModal;
@@ -210,6 +231,8 @@ document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-page]');if(b){showPage(b.dataset.page);return}
  const l=e.target.closest('[data-page-link]');if(l){showPage(l.dataset.pageLink);return}
  if(e.target.id==='newProductBtn')return openProduct();
+ if(e.target.id==='addSelectedToStockBtn')return addSelectedToStock();
+ if(e.target.id==='selectAllProducts'){ $('.product-check').forEach(x=>x.checked=e.target.checked);return }
  if(e.target.id==='newCustomerBtn')return openCustomer();
  if(e.target.id==='newQuoteBtn')return quoteModal();
  if(e.target.id==='pdfQuote'){const q=state.quotes.find(x=>x.id===e.target.dataset.quoteId);const items=window.__quotePdfItems||[];if(!q)return alert('Teklif bilgisi bulunamadı.');return exportQuotePdf(q,items);}
