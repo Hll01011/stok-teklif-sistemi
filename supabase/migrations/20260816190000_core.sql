@@ -1,9 +1,20 @@
 -- 001_core.sql
 create extension if not exists pgcrypto;
 
-create type public.quote_status as enum ('DRAFT','SENT','APPROVED','REJECTED','CANCELLED','EXPIRED');
-create type public.stock_transaction_type as enum ('IN','OUT','ADJUSTMENT','RETURN');
-create type public.pricing_mode as enum ('PERCENT','FIXED');
+do $ begin
+  create type public.quote_status as enum ('DRAFT','SENT','APPROVED','REJECTED','CANCELLED','EXPIRED');
+exception when duplicate_object then null;
+end $;
+
+do $ begin
+  create type public.stock_transaction_type as enum ('IN','OUT','ADJUSTMENT','RETURN');
+exception when duplicate_object then null;
+end $;
+
+do $ begin
+  create type public.pricing_mode as enum ('PERCENT','FIXED');
+exception when duplicate_object then null;
+end $;
 
 create table public.stock_categories (
   id uuid primary key default gen_random_uuid(),
