@@ -1,0 +1,2 @@
+-- Historical migration placeholder.
+-- Production migration version 001 already exists in the linked Supabase project.
