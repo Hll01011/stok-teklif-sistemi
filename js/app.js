@@ -204,6 +204,28 @@ function exportStockPdf(){
  html2pdf().set({margin:8,filename:'HIS-Stok-Listesi.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}}).from(box).save();
 }
 
+async function resetOperationalData(){
+  const ok=confirm('DİKKAT: Tüm stok ürünleri ve teklif müşterileri silinecek. Bu işlem geri alınamaz. Devam edilsin mi?');
+  if(!ok)return;
+  const typed=prompt('Onay için SIFIRLA yazın:');
+  if(typed!=='SIFIRLA')return toast('Sıfırlama iptal edildi','error');
+  try{
+    // Stok ürünleri önce hareket kayıtları temizlenerek sıfırlanır.
+    let r=await sb.from('stock_movements').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    if(r.error)throw r.error;
+    r=await sb.from('stock_products').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    if(r.error)throw r.error;
+    // Müşteriler, mevcut teklif kayıtlarıyla FK bağlıysa kullanıcıya açık hata gösterilir.
+    r=await sb.from('quote_customers').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    if(r.error)throw r.error;
+    toast('Stoklar ve müşteriler sıfırlandı.');
+    await loadAll();
+  }catch(err){
+    console.error(err);
+    toast('Sıfırlama tamamlanamadı: '+(err.message||err),'error');
+  }
+}
+
 function exportExcel(){const rows=state.products.map(p=>({Kod:p.product_code,Ürün:p.product_name,Kategori:p.stock_categories?.name||'',Stok:p.stock_quantity,Birim:p.unit,Alış:p.purchase_price,Satış:p.sale_price,Kur:p.currency}));const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Stoklar');XLSX.writeFile(wb,'his-stoklar.xlsx')}
 
 document.addEventListener('click',async e=>{
@@ -218,6 +240,7 @@ document.addEventListener('click',async e=>{
  if(e.target.id==='excelExportBtn')return exportExcel();
  if(e.target.id==='stockPdfBtn')return exportStockPdf();
  if(e.target.id==='newCategoryBtn')return openCategory();
+ if(e.target.id==='resetDataBtn')return resetOperationalData();
  const ep=e.target.closest('[data-edit-product]');if(ep)return openProduct(state.products.find(x=>x.id===ep.dataset.editProduct));
  const ec=e.target.closest('[data-edit-customer]');if(ec)return openCustomer(state.customers.find(x=>x.id===ec.dataset.editCustomer));
  const ps=e.target.closest('[data-price-save]');if(ps)return savePricing(ps.dataset.priceSave);
