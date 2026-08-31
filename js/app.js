@@ -44,7 +44,7 @@ function productForm(p={}){
  return '<h2>'+(p.id?'Ürünü düzenle':'Yeni ürün')+'</h2><form id="productForm"><div class="form-grid">'+
  '<label>Ürün kodu<input name="product_code" required value="'+esc(p.product_code||'')+'"></label>'+
  '<label>Ürün adı<input name="product_name" required value="'+esc(p.product_name||'')+'"></label>'+
- '<label>Kategori<select name="category_id"><option value="">Kategori yok</option>'+state.categories.map(c=>'<option value="'+c.id+'" '+(p.category_id===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></label>'+
+ '<label>Kategori<div class="category-select-wrap"><select name="category_id"><option value="">Kategori yok</option>'+state.categories.map(c=>'<option value="'+c.id+'" '+(p.category_id===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><button type="button" class="secondary mini-category-btn" id="addCategoryFromProduct">+ Yeni Kategori</button></div></label>'+
  '<label>Birim<select name="unit">'+['adet','metre','m','kg','lt','set','kutu'].map(u=>'<option '+((p.unit||'adet')===u?'selected':'')+'>'+u+'</option>').join('')+'</select></label>'+
  '<label>Mevcut stok<input name="stock_quantity" type="number" step="0.001" value="'+(p.stock_quantity??0)+'"></label>'+
  '<label>Kritik seviye<input name="critical_stock_level" type="number" step="0.001" value="'+(p.critical_stock_level??0)+'"></label>'+
@@ -56,6 +56,21 @@ function productForm(p={}){
 }
 function openProduct(p={}){
  openModal(productForm(p));$('#cancelModal').onclick=closeModal;
+ const addCatBtn=$('#addCategoryFromProduct');
+ if(addCatBtn)addCatBtn.onclick=async()=>{
+   const name=prompt('Yeni kategori adını yazın (örnek: Havalandırma, Pano):');
+   if(!name||!name.trim())return;
+   const clean=name.trim();
+   try{
+     const r=await sb.from('stock_categories').insert({name:clean}).select().single();
+     if(r.error)throw r.error;
+     state.categories.push(r.data);
+     const select=$('#productForm select[name="category_id"]');
+     select.insertAdjacentHTML('beforeend','<option value="'+r.data.id+'">'+esc(r.data.name)+'</option>');
+     select.value=r.data.id;
+     toast('Yeni kategori eklendi: '+clean);
+   }catch(err){toast(err.message||'Kategori eklenemedi','error')}
+ };
  $('#productForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));['stock_quantity','critical_stock_level','purchase_price','sale_price','pricing_value'].forEach(k=>f[k]=Number(f[k]||0));if(!f.category_id)f.category_id=null;
  try{if(p.id){const old=Number(p.stock_quantity),neu=Number(f.stock_quantity);const {stock_quantity,...upd}=f;let r=await sb.from('stock_products').update(upd).eq('id',p.id);if(r.error)throw r.error;if(neu!==old){const delta=neu-old;if(delta>0){const r2=await sb.rpc('apply_stock_movement',{p_product_id:p.id,p_movement_type:'IN',p_quantity:delta,p_unit_price:f.purchase_price,p_currency:f.currency,p_description:'Stok düzenleme'});if(r2.error)throw r2.error}else{const r2=await sb.rpc('apply_stock_movement',{p_product_id:p.id,p_movement_type:'OUT',p_quantity:Math.abs(delta),p_unit_price:f.purchase_price,p_currency:f.currency,p_description:'Stok düzenleme'});if(r2.error)throw r2.error}}}else{const initial=f.stock_quantity;f.stock_quantity=0;const r=await sb.from('stock_products').insert(f).select().single();if(r.error)throw r.error;if(initial>0){const r2=await sb.rpc('apply_stock_movement',{p_product_id:r.data.id,p_movement_type:'IN',p_quantity:initial,p_unit_price:f.purchase_price,p_currency:f.currency,p_description:'İlk stok girişi'});if(r2.error)throw r2.error}}toast('Ürün kaydedildi');closeModal();await loadAll()}catch(err){toast(err.message||'Ürün kaydedilemedi','error')}}}
 async function savePricing(id){const p=state.products.find(x=>x.id===id),mode=document.querySelector('.mode[data-id="'+id+'"]').value,value=Number(document.querySelector('.price-value[data-id="'+id+'"]').value||0),sale=mode==='FIXED'?Number(p.purchase_price)+value:Number(p.purchase_price)*(1+value/100);const r=await sb.from('stock_products').update({pricing_mode:mode,pricing_value:value,sale_price:sale}).eq('id',id);if(r.error)return toast(r.error.message,'error');toast('Satış fiyatı güncellendi');await loadAll()}
