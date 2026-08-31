@@ -29,7 +29,39 @@ function renderDashboard(){
  $('#criticalList').innerHTML=critical.map(p=>'<div class="list-row"><div><b>'+esc(p.product_name)+'</b><div class="muted">'+esc(p.product_code)+'</div></div><span class="stock-badge critical">'+p.stock_quantity+' '+esc(p.unit)+'</span></div>').join('')||'<div class="empty">Kritik stok yok.</div>';
  $('#recentTransactions').innerHTML=state.transactions.slice(0,8).map(m=>'<div class="list-row"><div><b>'+esc(m.stock_products?.product_name||'')+'</b><div class="muted">'+m.movement_type+' • '+new Date(m.created_at).toLocaleString('tr-TR')+'</div></div><strong>'+m.quantity+' '+esc(m.stock_products?.unit||'')+'</strong></div>').join('')||'<div class="empty">Henüz hareket yok.</div>';
 }
-function filteredProducts(){const q=($('#stockSearch').value||'').toLowerCase(),c=$('#stockCategoryFilter').value;return state.products.filter(p=>(!c||p.category_id===c)&&(!q||[p.product_code,p.product_name,p.stock_categories?.name].join(' ').toLowerCase().includes(q)))}
+const stockView={sortBy:'product_code',sortDir:'asc'};
+function productSortValue(p,key){
+ if(key==='category')return p.stock_categories?.name||'';
+ return p[key]??'';
+}
+function filteredProducts(){
+ const q=($('#stockSearch').value||'').toLocaleLowerCase('tr-TR');
+ const c=$('#stockCategoryFilter').value;
+ const status=$('#stockStatusFilter')?.value||'';
+ const filtered=state.products.filter(p=>{
+   const stock=Number(p.stock_quantity||0),critical=Number(p.critical_stock_level||0);
+   const matchesCategory=!c||p.category_id===c;
+   const matchesSearch=!q||[p.product_code,p.product_name,p.stock_categories?.name].join(' ').toLocaleLowerCase('tr-TR').includes(q);
+   const matchesStatus=!status
+     ||(status==='CRITICAL'&&stock<=critical)
+     ||(status==='IN_STOCK'&&stock>0)
+     ||(status==='ZERO'&&stock===0);
+   return matchesCategory&&matchesSearch&&matchesStatus;
+ });
+ return filtered.sort((x,y)=>{
+   const av=productSortValue(x,stockView.sortBy),bv=productSortValue(y,stockView.sortBy);
+   let result=0;
+   if(['stock_quantity','purchase_price','sale_price'].includes(stockView.sortBy)) result=Number(av||0)-Number(bv||0);
+   else result=String(av).localeCompare(String(bv),'tr',{numeric:true,sensitivity:'base'});
+   return stockView.sortDir==='asc'?result:-result;
+ });
+}
+function updateSortButton(){
+ const btn=$('#stockSortDirection');if(!btn)return;
+ const asc=stockView.sortDir==='asc';
+ btn.textContent=asc?'↑ Artan':'↓ Azalan';
+ btn.title=asc?'Artan sıralama aktif — tersine çevirmek için tıklayın':'Azalan sıralama aktif — tersine çevirmek için tıklayın';
+}
 function renderStocks(){
  $('#stockBody').innerHTML=filteredProducts().map(p=>{
   const critical=Number(p.stock_quantity)<=Number(p.critical_stock_level);
@@ -282,6 +314,12 @@ document.addEventListener('click',async e=>{
  const ap=e.target.closest('[data-approve-quote]');if(ap)return approveQuote(ap.dataset.approveQuote);
  const del=e.target.closest('[data-q-del]');if(del){state.quoteItems.splice(Number(del.dataset.qDel),1);renderQuoteItems()}
 });
-$('#stockSearch').addEventListener('input',renderStocks);document.addEventListener('input',e=>{if(e.target.matches('[data-q-qty],[data-q-price]')){const n=Number(e.target.dataset.qQty??e.target.dataset.qPrice);if(Number.isFinite(n)&&state.quoteItems[n]){if(e.target.dataset.qQty!==undefined)state.quoteItems[n].quantity=Number(e.target.value||0);else state.quoteItems[n].unit_price=Number(e.target.value||0);renderQuoteItems()}}});$('#stockCategoryFilter').addEventListener('change',renderStocks);
+$('#stockSearch').addEventListener('input',renderStocks);
+$('#stockCategoryFilter').addEventListener('change',renderStocks);
+$('#stockStatusFilter')?.addEventListener('change',renderStocks);
+$('#stockSort')?.addEventListener('change',e=>{stockView.sortBy=e.target.value;renderStocks()});
+$('#stockSortDirection')?.addEventListener('click',()=>{stockView.sortDir=stockView.sortDir==='asc'?'desc':'asc';updateSortButton();renderStocks()});
+updateSortButton();
+document.addEventListener('input',e=>{if(e.target.matches('[data-q-qty],[data-q-price]')){const n=Number(e.target.dataset.qQty??e.target.dataset.qPrice);if(Number.isFinite(n)&&state.quoteItems[n]){if(e.target.dataset.qQty!==undefined)state.quoteItems[n].quantity=Number(e.target.value||0);else state.quoteItems[n].unit_price=Number(e.target.value||0);renderQuoteItems()}}});
 $('#excelFile').addEventListener('change',async e=>{if(e.target.files[0])try{await importExcel(e.target.files[0])}catch(err){toast(err.message||'Excel okunamadı','error')}e.target.value=''});
 (async()=>{try{await loadAll();toast('Şifresiz stok ve teklif sistemi hazır')}catch(err){console.error(err);toast('Bağlantı hatası: '+(err.message||err),'error')}})();
