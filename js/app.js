@@ -210,12 +210,17 @@ async function resetOperationalData(){
   const typed=prompt('Onay için SIFIRLA yazın:');
   if(typed!=='SIFIRLA')return toast('Sıfırlama iptal edildi','error');
   try{
-    // Stok ürünleri önce hareket kayıtları temizlenerek sıfırlanır.
-    let r=await sb.from('stock_movements').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    // Teklif geçmişi korunur; ilişkiler temizlenir, ekranlarda kayıtlı ad ve ürün snapshot'ları kalır.
+    let r=await sb.from('stock_quote_items').update({product_id:null}).neq('id','00000000-0000-0000-0000-000000000000');
+    if(r.error)throw r.error;
+    r=await sb.from('stock_quotes').update({customer_id:null}).neq('id','00000000-0000-0000-0000-000000000000');
+    if(r.error)throw r.error;
+    // Stok ürünleri ve bağlı hareket kayıtları temizlenir.
+    r=await sb.from('stock_movements').delete().neq('id','00000000-0000-0000-0000-000000000000');
     if(r.error)throw r.error;
     r=await sb.from('stock_products').delete().neq('id','00000000-0000-0000-0000-000000000000');
     if(r.error)throw r.error;
-    // Müşteriler, mevcut teklif kayıtlarıyla FK bağlıysa kullanıcıya açık hata gösterilir.
+    // Müşteri kartları temizlenir.
     r=await sb.from('quote_customers').delete().neq('id','00000000-0000-0000-0000-000000000000');
     if(r.error)throw r.error;
     toast('Stoklar ve müşteriler sıfırlandı.');
