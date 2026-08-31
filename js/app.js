@@ -8,15 +8,16 @@ function openModal(h){$('#modalContent').innerHTML=h;$('#modal').classList.remov
 function closeModal(){$('#modal').classList.add('hidden');$('#modalContent').innerHTML=''}
 function showPage(p){$$('.page').forEach(x=>x.classList.toggle('active-page',x.id===p));$$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.page===p));const t={dashboard:['GENEL BAKIŞ','Dashboard'],stocks:['ENVANTER','Stoklar'],customers:['MÜŞTERİLER','Müşteriler'],quotes:['TEKLİFLER','Teklifler'],transactions:['ENVANTER','Hareketler'],settings:['SİSTEM','Ayarlar']}[p];$('#pageEyebrow').textContent=t[0];$('#pageTitle').textContent=t[1];}
 async function loadAll(){
-  const [c,p,cu,q,m]=await Promise.all([
+  const [c,b,p,cu,q,m]=await Promise.all([
     sb.from('stock_categories').select('*').order('name'),
+    sb.from('stock_brands').select('*').order('name'),
     sb.from('stock_products').select('*,stock_categories(name)').eq('is_active',true).order('product_name'),
     sb.from('quote_customers').select('*').order('name'),
     sb.from('stock_quotes').select('*').order('created_at',{ascending:false}),
     sb.from('stock_movements').select('*,stock_products(product_name,product_code,unit)').order('created_at',{ascending:false}).limit(50)
   ]);
-  for(const r of [c,p,cu,q,m]) if(r.error) throw r.error;
-  state.categories=c.data||[];state.products=p.data||[];state.customers=cu.data||[];state.quotes=q.data||[];state.transactions=m.data||[];
+  for(const r of [c,b,p,cu,q,m]) if(r.error) throw r.error;
+  state.categories=c.data||[];state.brands=b.data||[];state.products=p.data||[];state.customers=cu.data||[];state.quotes=q.data||[];state.transactions=m.data||[];
   $('#stockCategoryFilter').innerHTML='<option value="">Tüm kategoriler</option>'+state.categories.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('');
   renderAll();
 }
@@ -77,6 +78,7 @@ function productForm(p={}){
  '<label>Ürün kodu<input name="product_code" required value="'+esc(p.product_code||'')+'"></label>'+
  '<label>Ürün adı<input name="product_name" required value="'+esc(p.product_name||'')+'"></label>'+
  '<label>Kategori<div class="category-select-wrap"><select name="category_id"><option value="">Kategori yok</option>'+state.categories.map(c=>'<option value="'+c.id+'" '+(p.category_id===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><button type="button" class="secondary mini-category-btn" id="addCategoryFromProduct">+ Yeni Kategori</button></div></label>'+
+ '<label>Marka<div class="category-select-wrap"><select name="brand_id"><option value="">Marka seçin</option>'+state.brands.map(b=>'<option value="'+b.id+'" '+(p.brand_id===b.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select><button type="button" class="secondary mini-category-btn" id="addBrandFromProduct">+ Yeni Marka</button></div></label>'+
  '<label>Birim<select name="unit">'+['adet','metre','m','kg','lt','set','kutu'].map(u=>'<option '+((p.unit||'adet')===u?'selected':'')+'>'+u+'</option>').join('')+'</select></label>'+
  '<label>Mevcut stok<input name="stock_quantity" type="number" step="0.001" value="'+(p.stock_quantity??0)+'"></label>'+
  '<label>Kritik seviye<input name="critical_stock_level" type="number" step="0.001" value="'+(p.critical_stock_level??0)+'"></label>'+
@@ -88,6 +90,12 @@ function productForm(p={}){
 }
 function openProduct(p={}){
  openModal(productForm(p));$('#cancelModal').onclick=closeModal;
+ const addBrandBtn=$('#addBrandFromProduct');
+ if(addBrandBtn)addBrandBtn.onclick=async()=>{
+   const name=prompt('Yeni marka adını yazın (örnek: Chint, Siemens):');
+   if(!name||!name.trim())return;
+   try{const r=await sb.from('stock_brands').insert({name:name.trim()}).select().single();if(r.error)throw r.error;state.brands.push(r.data);const select=$('#productForm select[name="brand_id"]');select.insertAdjacentHTML('beforeend','<option value="'+r.data.id+'">'+esc(r.data.name)+'</option>');select.value=r.data.id;toast('Yeni marka eklendi: '+name.trim())}catch(err){toast(err.message||'Marka eklenemedi','error')}
+ };
  const addCatBtn=$('#addCategoryFromProduct');
  if(addCatBtn)addCatBtn.onclick=async()=>{
    const name=prompt('Yeni kategori adını yazın (örnek: Havalandırma, Pano):');
@@ -103,7 +111,7 @@ function openProduct(p={}){
      toast('Yeni kategori eklendi: '+clean);
    }catch(err){toast(err.message||'Kategori eklenemedi','error')}
  };
- $('#productForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));['stock_quantity','critical_stock_level','purchase_price','sale_price','pricing_value'].forEach(k=>f[k]=Number(f[k]||0));if(!f.category_id)f.category_id=null;
+ $('#productForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));['stock_quantity','critical_stock_level','purchase_price','sale_price','pricing_value'].forEach(k=>f[k]=Number(f[k]||0));if(!f.category_id)f.category_id=null;if(!f.brand_id)f.brand_id=null;
  try{if(p.id){const old=Number(p.stock_quantity),neu=Number(f.stock_quantity);const {stock_quantity,...upd}=f;let r=await sb.from('stock_products').update(upd).eq('id',p.id);if(r.error)throw r.error;if(neu!==old){const delta=neu-old;if(delta>0){const r2=await sb.rpc('apply_stock_movement',{p_product_id:p.id,p_movement_type:'IN',p_quantity:delta,p_unit_price:f.purchase_price,p_currency:f.currency,p_description:'Stok düzenleme'});if(r2.error)throw r2.error}else{const r2=await sb.rpc('apply_stock_movement',{p_product_id:p.id,p_movement_type:'OUT',p_quantity:Math.abs(delta),p_unit_price:f.purchase_price,p_currency:f.currency,p_description:'Stok düzenleme'});if(r2.error)throw r2.error}}}else{const initial=f.stock_quantity;f.stock_quantity=0;const r=await sb.from('stock_products').insert(f).select().single();if(r.error)throw r.error;if(initial>0){const r2=await sb.rpc('apply_stock_movement',{p_product_id:r.data.id,p_movement_type:'IN',p_quantity:initial,p_unit_price:f.purchase_price,p_currency:f.currency,p_description:'İlk stok girişi'});if(r2.error)throw r2.error}}toast('Ürün kaydedildi');closeModal();await loadAll()}catch(err){toast(err.message||'Ürün kaydedilemedi','error')}}}
 async function savePricing(id){const p=state.products.find(x=>x.id===id),mode=document.querySelector('.mode[data-id="'+id+'"]').value,value=Number(document.querySelector('.price-value[data-id="'+id+'"]').value||0),sale=mode==='FIXED'?Number(p.purchase_price)+value:Number(p.purchase_price)*(1+value/100);const r=await sb.from('stock_products').update({pricing_mode:mode,pricing_value:value,sale_price:sale}).eq('id',id);if(r.error)return toast(r.error.message,'error');toast('Satış fiyatı güncellendi');await loadAll()}
 
@@ -235,6 +243,10 @@ async function addToQuote(id){const p=state.products.find(x=>x.id===id);const ra
 
 async function importExcel(file){const data=await file.arrayBuffer(),wb=XLSX.read(data),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});let added=0;for(const x of rows){const name=x['Ürün']||x['ÜRÜN']||x['product_name'];if(!name)continue;let catName=x['Kategori']||x['KATEGORİ']||'Genel',cat=state.categories.find(c=>c.name.toLowerCase()===String(catName).toLowerCase());if(!cat){const r=await sb.from('stock_categories').insert({name:String(catName)}).select().single();if(r.error)throw r.error;cat=r.data;state.categories.push(cat)}const row={product_code:String(x['Kod']||x['KOD']||x['product_code']||('PRD-'+Date.now()+added)),product_name:String(name),category_id:cat.id,unit:String(x['Birim']||x['BİRİM']||'adet'),stock_quantity:0,critical_stock_level:Number(x['Kritik']||0),purchase_price:Number(x['Alış']||x['ALIŞ']||0),sale_price:Number(x['Satış']||x['SATIŞ']||0),currency:String(x['Kur']||x['KUR']||'TRY')};const stock=Number(x['Stok']||x['STOK']||0);const r=await sb.from('stock_products').insert(row).select().single();if(r.error)continue;if(stock>0)await sb.rpc('apply_stock_movement',{p_product_id:r.data.id,p_movement_type:'IN',p_quantity:stock,p_unit_price:row.purchase_price,p_currency:row.currency,p_description:'Excel ilk stok'});added++}toast(added+' ürün içe aktarıldı');await loadAll()}
 
+function openBrand(){
+ openModal('<h2>Yeni marka</h2><form id="brandForm"><label>Marka adı<input name="name" required placeholder="Örn: Chint, Siemens, Schneider"></label><div class="form-actions"><button type="button" class="ghost" id="cancelModal">Vazgeç</button><button class="primary">Kaydet</button></div></form>');
+ $('#cancelModal').onclick=closeModal;$('#brandForm').onsubmit=async e=>{e.preventDefault();const name=new FormData(e.currentTarget).get('name').trim();if(!name)return;const r=await sb.from('stock_brands').insert({name}).select().single();if(r.error)return toast(r.error.message,'error');toast('Marka eklendi');closeModal();await loadAll()}
+}
 function openCategory(){
  openModal('<h2>Yeni kategori</h2><form id="categoryForm"><label>Kategori adı<input name="name" required placeholder="Örn: Pano, Havalandırma"></label><div class="form-actions"><button type="button" class="ghost" id="cancelModal">Vazgeç</button><button class="primary">Kaydet</button></div></form>');
  $('#cancelModal').onclick=closeModal;
@@ -292,6 +304,7 @@ document.addEventListener('click',async e=>{
  if(e.target.id==='excelExportBtn')return exportExcel();
  if(e.target.id==='stockPdfBtn')return exportStockPdf();
  if(e.target.id==='newCategoryBtn')return openCategory();
+ if(e.target.id==='newBrandBtn')return openBrand();
  if(e.target.id==='resetDataBtn')return resetOperationalData();
  const dp=e.target.closest('[data-delete-product]');if(dp){
    const id=dp.dataset.deleteProduct,p=state.products.find(x=>String(x.id)===String(id));
