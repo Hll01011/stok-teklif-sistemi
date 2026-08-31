@@ -249,6 +249,11 @@ document.addEventListener('click',async e=>{
  const ap=e.target.closest('[data-approve-quote]');if(ap)return approveQuote(ap.dataset.approveQuote);
  const del=e.target.closest('[data-q-del]');if(del){state.quoteItems.splice(Number(del.dataset.qDel),1);renderQuoteItems()}
 });
-$('#stockSearch').addEventListener('input',renderStocks);document.addEventListener('input',e=>{if(e.target.matches('[data-q-qty],[data-q-price]')){const n=Number(e.target.dataset.qQty??e.target.dataset.qPrice);if(Number.isFinite(n)&&state.quoteItems[n]){if(e.target.dataset.qQty!==undefined)state.quoteItems[n].quantity=Number(e.target.value||0);else state.quoteItems[n].unit_price=Number(e.target.value||0);renderQuoteItems()}}});$('#stockCategoryFilter').addEventListener('change',renderStocks);
+$('#stockSearch').addEventListener('input',renderStocks);
+ $('#addSelectedToQuoteBtn').onclick=()=>{
+   const selected=$('.product-check:checked').map(x=>state.products.find(p=>p.id===x.value)).filter(Boolean);
+   if(!selected.length)return toast('Önce tablodan en az bir ürün seçin','error');
+   quoteModal(selected);
+ };document.addEventListener('input',e=>{if(e.target.matches('[data-q-qty],[data-q-price]')){const n=Number(e.target.dataset.qQty??e.target.dataset.qPrice);if(Number.isFinite(n)&&state.quoteItems[n]){if(e.target.dataset.qQty!==undefined)state.quoteItems[n].quantity=Number(e.target.value||0);else state.quoteItems[n].unit_price=Number(e.target.value||0);renderQuoteItems()}}});$('#stockCategoryFilter').addEventListener('change',renderStocks);
 $('#excelFile').addEventListener('change',async e=>{if(e.target.files[0])try{await importExcel(e.target.files[0])}catch(err){toast(err.message||'Excel okunamadı','error')}e.target.value=''});
 (async()=>{try{await loadAll();toast('Şifresiz stok ve teklif sistemi hazır')}catch(err){console.error(err);toast('Bağlantı hatası: '+(err.message||err),'error')}})();
