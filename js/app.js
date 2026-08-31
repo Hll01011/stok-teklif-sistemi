@@ -33,7 +33,7 @@ function filteredProducts(){const q=($('#stockSearch').value||'').toLowerCase(),
 function renderStocks(){
  $('#stockBody').innerHTML=filteredProducts().map(p=>{
   const critical=Number(p.stock_quantity)<=Number(p.critical_stock_level);
-  return '<tr><td><input class="product-check" type="checkbox" value="'+p.id+'"></td><td><b>'+esc(p.product_code)+'</b></td><td>'+esc(p.product_name)+'</td><td>'+esc(p.stock_categories?.name||'-')+'</td><td><span class="stock-badge '+(critical?'critical':'')+'">'+p.stock_quantity+'</span></td><td>'+esc(p.unit)+'</td><td>'+money(p.purchase_price,p.currency)+'</td><td>'+money(p.sale_price,p.currency)+'</td><td><div class="pricing"><select class="mode" data-id="'+p.id+'"><option value="PERCENT" '+(p.pricing_mode==='PERCENT'?'selected':'')+'>%</option><option value="FIXED" '+(p.pricing_mode==='FIXED'?'selected':'')+'>₺/$</option></select><input class="price-value" data-id="'+p.id+'" value="'+p.pricing_value+'"><button class="primary save" data-price-save="'+p.id+'">✓</button></div></td><td>'+esc(p.currency)+'</td><td><button class="secondary" data-add-quote="'+p.id+'">+ Teklife Ekle</button></td><td><button class="link-btn" data-edit-product="'+p.id+'">Düzenle</button></td></tr>';
+  return '<tr><td><input class="product-check" type="checkbox" value="'+p.id+'"></td><td><b>'+esc(p.product_code)+'</b></td><td>'+esc(p.product_name)+'</td><td>'+esc(p.stock_categories?.name||'-')+'</td><td><span class="stock-badge '+(critical?'critical':'')+'">'+p.stock_quantity+'</span></td><td>'+esc(p.unit)+'</td><td>'+money(p.purchase_price,p.currency)+'</td><td>'+money(p.sale_price,p.currency)+'</td><td><div class="pricing"><select class="mode" data-id="'+p.id+'"><option value="PERCENT" '+(p.pricing_mode==='PERCENT'?'selected':'')+'>%</option><option value="FIXED" '+(p.pricing_mode==='FIXED'?'selected':'')+'>₺/$</option></select><input class="price-value" data-id="'+p.id+'" value="'+p.pricing_value+'"><button class="primary save" data-price-save="'+p.id+'">✓</button></div></td><td>'+esc(p.currency)+'</td><td><button class="secondary" data-add-quote="'+p.id+'">+ Teklife Ekle</button></td><td><button class="link-btn" data-edit-product="'+p.id+'">Düzenle</button> <button class="danger-btn" data-delete-product="'+p.id+'">🗑 Stoktan Sil</button></td></tr>';
  }).join('')||'<tr><td colspan="12"><div class="empty">Ürün bulunamadı.</div></td></tr>';
 }
 function renderCustomers(){$('#customerGrid').innerHTML=state.customers.map(c=>'<div class="customer-card"><h3>'+esc(c.name)+'</h3><p>'+esc(c.contact_name||'')+'<br>'+esc(c.phone||'')+'<br>'+esc(c.email||'')+'</p><button class="secondary" data-edit-customer="'+c.id+'">Düzenle</button></div>').join('')||'<div class="empty">Henüz müşteri yok.</div>'}
@@ -261,6 +261,19 @@ document.addEventListener('click',async e=>{
  if(e.target.id==='stockPdfBtn')return exportStockPdf();
  if(e.target.id==='newCategoryBtn')return openCategory();
  if(e.target.id==='resetDataBtn')return resetOperationalData();
+ const dp=e.target.closest('[data-delete-product]');if(dp){
+   const id=dp.dataset.deleteProduct,p=state.products.find(x=>String(x.id)===String(id));
+   if(!p)return;
+   if(!confirm(p.product_name+' ürününü stoktan tamamen silmek istiyor musunuz?'))return;
+   try{
+     let r=await sb.from('stock_movements').delete().eq('product_id',id);
+     if(r.error)throw r.error;
+     r=await sb.from('stock_products').delete().eq('id',id);
+     if(r.error)throw r.error;
+     toast('Ürün stoktan silindi');await loadAll();
+   }catch(err){console.error(err);toast(err.message||'Ürün silinemedi','error')}
+   return;
+ }
  const ep=e.target.closest('[data-edit-product]');if(ep)return openProduct(state.products.find(x=>x.id===ep.dataset.editProduct));
  const ec=e.target.closest('[data-edit-customer]');if(ec)return openCustomer(state.customers.find(x=>x.id===ec.dataset.editCustomer));
  const ps=e.target.closest('[data-price-save]');if(ps)return savePricing(ps.dataset.priceSave);
